@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "name": "Audio Coach",
+  "description": "Voice-guided coaching with audio alerts for power zones, intervals, climbs, and pacing",
+  "version": "1.0.0",
+  "author": "Zwift MOD Framework",
+  "web_root": "pages",
+  "windows": [{
+    "file": "pages/audio-coach.html",
+    "id": "audio-coach-main",
+    "name": "Audio Coach",
+    "description": "Configure and control audio coaching alerts",
+    "overlay": false,
+    "frame": true,
+    "default_bounds": {
+      "width": 800,
+      "height": 600,
+      "x": 100,
+      "y": 100
+    }
+  }]
+}
