@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html tabindex="0" data-settings-key="elevation-profile-settings-v1" class="passive-overlay-scrollbars">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval';"/>
+
+        <title>📊 Elevation Profile</title>
+
+        <script src="/pages/src/preloads.js"></script>
+
+        <link id="favicon" rel="shortcut icon" href="/images/favicon.png"/>
+        <link rel="stylesheet" href="/pages/css/common.css"/>
+        <link rel="stylesheet" href="./css/elevation_profile.css"/>
+
+        <script type="module">
+            import {main} from './src/elevation_profile.mjs';
+            main();
+        </script>
+    </head>
+    <body class="transparent-bg">
+        <!-- Sauce titlebar -->
+        <div id="titlebar">
+            <header>
+                <div class="logo"><img src="/pages/images/icon128.png"/></div>
+                <div class="title">📊 Elevation Profile</div>
+                <div class="filler"></div>
+                <div class="buttons">
+                    <a class="button" onClick="window.location.reload()" title="Reload">&#x21bb;</a>
+                    <div title="Minimize" class="button minimize electron-only"><ms>minimize</ms></div>
+                    <div title="Close this window" class="button close electron-only"><ms>close</ms></div>
+                </div>
+            </header>
+        </div>
+        
+        <div id="content">
+            <!-- Main elevation container -->
+            <div class="elevation-container"></div>
+            
+            <!-- Controls overlay -->
+            <div class="controls-overlay">
+                <button class="control-btn" id="refresh-btn" title="Refresh checkpoint data">
+                    🔄
+                </button>
+                <button class="control-btn active" id="toggle-checkpoints-btn" title="Toggle FIT checkpoints">
+                    📍
+                </button>
+                <button class="control-btn" id="clear-btn" title="Clear all checkpoints">
+                    🗑️
+                </button>
+            </div>
+        </div>
+        
+        <!-- Notification -->
+        <div class="notification" id="notification" style="display: none;"></div>
+    </body>
+</html>
