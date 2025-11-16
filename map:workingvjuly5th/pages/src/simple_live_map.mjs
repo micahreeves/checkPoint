@@ -76,81 +76,115 @@ function showNotification(message, type = 'info') {
 }
 
 /**
- * Create Zwift map - EXACT same pattern as geo.mjs
+ * Create Zwift map - EXACT same as checkpoint tracker
  */
 function createZwiftMap() {
-    const opacity = 1 - 1 / (100 / (settings.transparency || 0));
-    const autoCenter = getSetting('autoCenter', true);
+    const mapEl = document.querySelector('.map');
+    if (!mapEl) {
+        console.warn('Map element not found');
+        return null;
+    }
 
-    const zm = new map.SauceZwiftMap({
-        el: document.querySelector('.map'),
-        worldList,
-        zoom: settings.zoom,
-        autoHeading: autoCenter && getSetting('autoHeading', true),
-        autoCenter,
-        style: settings.mapStyle,
-        opacity,
-        tiltShift: settings.tiltShift && ((settings.tiltShiftAmount || 0) / 100),
-        sparkle: settings.sparkle,
-        quality: qualityScale(settings.quality || 80),
-        verticalOffset: settings.verticalOffset / 100,
-        fpsLimit: settings.fpsLimit || 30,
-        zoomPriorityTilt: getSetting('zoomPriorityTilt', true),
-        preferRoute: settings.routeProfile !== false,
-    });
+    try {
+        if (!worldList || !Array.isArray(worldList) || worldList.length === 0) {
+            console.warn('No world list available, map creation deferred');
+            return null;
+        }
 
-    console.log('✅ Zwift map created using EXACT geo.mjs pattern');
-    return zm;
+        const zm = new map.SauceZwiftMap({
+            el: mapEl,
+            worldList,
+            zoom: 0.5,
+            autoHeading: settings.autoHeading || false,
+            autoCenter: settings.autoCenter || true,
+            style: 'default',
+            opacity: 1,
+            tiltShift: false,
+            sparkle: false,
+            quality: 0.8,
+            verticalOffset: 0,
+            fpsLimit: 30,
+            zoomPriorityTilt: true,
+            preferRoute: true
+        });
+
+        console.log('Zwift map created successfully (checkpoint tracker pattern)');
+        return zm;
+
+    } catch (error) {
+        console.error('Error creating Zwift map:', error);
+
+        mapEl.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%;
+                        background: #333; color: white; flex-direction: column;">
+                <div style="font-size: 18px; margin-bottom: 10px;">Map Unavailable</div>
+                <div style="font-size: 14px; opacity: 0.8;">Routes can still be loaded and parsed</div>
+                <div style="font-size: 12px; margin-top: 10px;">Error: ${error.message}</div>
+            </div>
+        `;
+
+        return null;
+    }
 }
 
 /**
- * Initialize - EXACT same pattern as geo.mjs
+ * Initialize athlete tracking - EXACT same as checkpoint tracker
  */
-async function initialize() {
-    console.log('🔄 Initializing (geo.mjs pattern)...');
-
-    // Same as geo.mjs: check self first, then watching
-    let ad = await common.rpc.getAthleteData('self');
-    if (!ad) {
-        ad = await common.rpc.getAthleteData('watching');
-    }
-
-    inGame = !!ad && ad.age < 15000;
-
-    if (!inGame) {
-        console.log('❌ Not in game');
-        return;
-    }
-
-    // Set athlete - same as geo.mjs
-    zwiftMap.setAthlete(ad.athleteId);
-    console.log('✅ Set athlete:', ad.athleteId);
-
-    // Set watching - same as geo.mjs
-    if (!ad.watching) {
-        const watching = await common.rpc.getAthleteData('watching');
-        if (watching) {
-            zwiftMap.setWatching(watching.athleteId);
-            console.log('✅ Set watching:', watching.athleteId);
-        }
-    } else {
-        zwiftMap.setWatching(ad.athleteId);
-        console.log('✅ Set watching (self):', ad.athleteId);
-    }
-
-    // CRUCIAL: Render initial state - same as geo.mjs lines 211-221
-    if (ad.state) {
-        console.log('✅ Rendering initial athlete state...');
-        zwiftMap.incPause();
+async function initializeAthleteTracking() {
+    try {
+        let selfData;
         try {
-            await zwiftMap.renderAthleteStates([ad.state]);
-            console.log('✅ Initial state rendered');
-        } finally {
-            zwiftMap.decPause();
+            selfData = await common.rpc.getAthleteData('self');
+            inGame = !!(selfData && selfData.age < 15000);
+        } catch (error) {
+            console.warn('Could not get self athlete data:', error);
+            inGame = false;
+            selfData = null;
         }
-    }
 
-    console.log('✅ Initialization complete');
+        if (selfData && selfData.athleteId) {
+            if (zwiftMap) {
+                try {
+                    zwiftMap.setAthlete(selfData.athleteId);
+                } catch (error) {
+                    console.warn('Error setting athlete on map:', error);
+                }
+            }
+            console.log('Self athlete ID:', selfData.athleteId);
+        }
+
+        let watchingData;
+        try {
+            watchingData = await common.rpc.getAthleteData('watching');
+        } catch (error) {
+            console.warn('Could not get watching athlete data:', error);
+            watchingData = null;
+        }
+
+        if (watchingData && watchingData.athleteId) {
+            if (zwiftMap) {
+                try {
+                    zwiftMap.setWatching(watchingData.athleteId);
+                } catch (error) {
+                    console.warn('Error setting watching on map:', error);
+                }
+            }
+            console.log('Watching athlete ID:', watchingData.athleteId);
+        } else if (selfData && selfData.athleteId) {
+            if (zwiftMap) {
+                try {
+                    zwiftMap.setWatching(selfData.athleteId);
+                } catch (error) {
+                    console.warn('Error setting watching on map:', error);
+                }
+            }
+        }
+
+        console.log('Athlete tracking initialized (checkpoint tracker pattern)');
+
+    } catch (error) {
+        console.error('Error initializing athlete tracking:', error);
+    }
 }
 
 /**
@@ -575,62 +609,94 @@ function setupMapControls() {
 }
 
 /**
- * Main entry point - EXACT same pattern as geo.mjs
+ * Setup live tracking - EXACT same as checkpoint tracker
+ */
+function setupLiveTracking() {
+    setInterval(() => {
+        if (inGame && performance.now() - (watchdog || 0) > 10000) {
+            console.warn("Watchdog triggered by inactivity");
+            inGame = false;
+            initializeAthleteTracking();
+        }
+    }, 5000);
+
+    try {
+        common.subscribe('states', async (states) => {
+            if (!states || !Array.isArray(states) || states.length === 0) return;
+
+            watchdog = performance.now();
+
+            if (!inGame) {
+                inGame = true;
+                await initializeAthleteTracking();
+            }
+
+            if (zwiftMap) {
+                try {
+                    await zwiftMap.renderAthleteStates(states);
+                } catch (error) {
+                    console.warn('Error rendering athlete states:', error);
+                }
+            }
+        });
+
+        common.subscribe('watching-athlete-change', async (newWatchingId) => {
+            if (newWatchingId && !isNaN(newWatchingId)) {
+                if (zwiftMap) {
+                    try {
+                        zwiftMap.setWatching(newWatchingId);
+                    } catch (error) {
+                        console.warn('Error setting watching athlete:', error);
+                    }
+                }
+                console.log('Now watching athlete:', newWatchingId);
+            }
+        });
+
+        console.log('Live tracking subscriptions set up (checkpoint tracker pattern)');
+
+    } catch (error) {
+        console.error('Error setting up live tracking:', error);
+    }
+}
+
+/**
+ * Main entry point - EXACT same as checkpoint tracker
  */
 export async function main() {
     common.initInteractionListeners();
 
-    console.log('🚀 Starting Simple Live Map (geo.mjs pattern)');
+    console.log('🚀 Starting Simple Live Map (checkpoint tracker pattern)');
 
     try {
-        // Step 1: Get world list (same as geo.mjs line 337)
-        worldList = await common.getWorldList();
-        console.log(`✅ Loaded ${worldList?.length || 0} worlds`);
+        // Get world list
+        try {
+            worldList = await common.getWorldList();
+            console.log(`Loaded ${worldList?.length || 0} worlds`);
+        } catch (error) {
+            console.warn('Could not load world list:', error);
+            worldList = [];
+        }
 
-        // Step 2: Create map (same as geo.mjs line 338)
+        // Create map
         zwiftMap = createZwiftMap();
         window.zwiftMap = zwiftMap; // DEBUG
 
-        // Step 3: Initialize FIT checkpoints
+        // Initialize FIT checkpoints
         fitCheckpoints = new SimpleFitCheckpoints();
 
-        // Step 4: Setup UI controls
+        // Initialize athlete tracking
+        await initializeAthleteTracking();
+
+        // Setup UI controls
         setupMapControls();
         setupFitFileLoading();
 
-        // Step 5: Initialize (same as geo.mjs line 370)
-        await initialize();
+        // Setup live tracking
+        setupLiveTracking();
 
-        // Step 6: Setup subscriptions (same as geo.mjs lines 373-400)
-        common.subscribe('watching-athlete-change', async athleteId => {
-            console.log('👀 Watching athlete changed:', athleteId);
-            if (!inGame) {
-                await initialize();
-            } else {
-                zwiftMap.setWatching(athleteId);
-            }
-        });
-
-        // Watchdog - same as geo.mjs lines 384-390
-        setInterval(() => {
-            if (inGame && performance.now() - watchdog > 30000) {
-                console.warn("🐕 Watchdog triggered by inactivity");
-                inGame = false;
-                initialize();
-            }
-        }, 3333);
-
-        // States subscription - EXACT same pattern as geo.mjs lines 391-400
-        common.subscribe('states', async states => {
-            if (!inGame) {
-                await initialize();
-            }
-            watchdog = performance.now();
-            zwiftMap.renderAthleteStates(states); // NOTE: NO await! Same as geo.mjs
-        });
-
-        console.log('✅ Simple Live Map initialized (geo.mjs pattern)');
-        showNotification('🎯 Map ready - using geo.mjs pattern!', 'success');
+        console.log('✅ Simple Live Map initialized (checkpoint tracker pattern)');
+        showNotification('🎯 Map ready - checkpoint tracker pattern!', 'success');
 
     } catch (error) {
         console.error('❌ Error initializing:', error);
