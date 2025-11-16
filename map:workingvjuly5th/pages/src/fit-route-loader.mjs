@@ -246,20 +246,27 @@ export class FitRouteLoader {
     }
 
     /**
-     * Convert GPS coordinates to Zwift coordinates using world-specific metadata
+     * Convert GPS coordinates to Zwift coordinates using Sauce's built-in conversion
+     * This ensures consistency with how athletes are positioned on the map
      */
     convertToZwiftCoordinates(gpsCoordinates) {
-        console.log(`🔍 Converting coordinates - detected world: ${this.detectedWorld}`);
+        console.log(`🔍 Converting ${gpsCoordinates.length} GPS coordinates using Sauce built-in conversion`);
         console.log(`📍 Sample GPS coordinates:`, gpsCoordinates.slice(0, 3));
-        
-        if (!this.detectedWorld || !WORLD_METAS[this.detectedWorld]) {
-            console.warn(`⚠️ No world metadata for ${this.detectedWorld}, using coordinates as-is`);
-            return gpsCoordinates.map(coord => [coord[0], coord[1]]);
+
+        // Use Sauce's built-in latlngToPosition for consistency with athlete positioning
+        if (!this.zwiftMap?.latlngToPosition || !this.zwiftMap?.worldMeta) {
+            console.warn(`⚠️ Map worldMeta not available, cannot convert coordinates`);
+            return [];
         }
 
-        const meta = WORLD_METAS[this.detectedWorld];
-        console.log(`🔄 Converting ${gpsCoordinates.length} coordinates for ${this.detectedWorld}`);
-        console.log(`🌍 World metadata:`, meta);
+        console.log(`🌍 Using Sauce worldMeta for courseId: ${this.zwiftMap.courseId}`);
+        console.log(`🔄 World metadata:`, {
+            latOffset: this.zwiftMap.worldMeta.latOffset,
+            lonOffset: this.zwiftMap.worldMeta.lonOffset,
+            latDegDist: this.zwiftMap.worldMeta.latDegDist,
+            lonDegDist: this.zwiftMap.worldMeta.lonDegDist,
+            flippedHack: this.zwiftMap.worldMeta.flippedHack
+        });
 
         const zwiftCoordinates = [];
 
@@ -267,47 +274,28 @@ export class FitRouteLoader {
             if (!coord || coord.length < 2) continue;
 
             const [lat, lng] = coord;
-            
+
             if (isNaN(lat) || isNaN(lng)) continue;
 
-            // Convert GPS to Zwift coordinates using world metadata
-            let zwiftX, zwiftY;
-            
-            if (meta.flippedHack) {
-                // Some worlds have flipped coordinates
-                zwiftX = (lng - meta.lonOffset) * meta.lonDegDist * 100;
-                zwiftY = -(lat - meta.latOffset) * meta.latDegDist * 100;
-            } else {
-                // Standard conversion (matches Sauce built-in latlngToPosition)
-                zwiftX = (lng - meta.lonOffset) * meta.lonDegDist * 100;
-                zwiftY = -(lat - meta.latOffset) * meta.latDegDist * 100;
-            }
+            // Use Sauce's built-in conversion - this matches how athletes are positioned!
+            try {
+                const zwiftPos = this.zwiftMap.latlngToPosition([lat, lng]);
 
-            // Validate converted coordinates
-            if (!isNaN(zwiftX) && !isNaN(zwiftY)) {
-                zwiftCoordinates.push([zwiftX, zwiftY]);
+                if (!isNaN(zwiftPos[0]) && !isNaN(zwiftPos[1])) {
+                    zwiftCoordinates.push(zwiftPos);
+                }
+            } catch (error) {
+                console.warn(`Error converting coordinate [${lat}, ${lng}]:`, error);
             }
         }
 
-        console.log(`✅ Converted to ${zwiftCoordinates.length} Zwift coordinates`);
-        
+        console.log(`✅ Converted to ${zwiftCoordinates.length} Zwift coordinates using Sauce built-in method`);
+
         if (zwiftCoordinates.length > 0) {
             const firstCoord = zwiftCoordinates[0];
             const lastCoord = zwiftCoordinates[zwiftCoordinates.length - 1];
             console.log(`📍 First Zwift coordinate: [${firstCoord[0].toFixed(2)}, ${firstCoord[1].toFixed(2)}]`);
             console.log(`📍 Last Zwift coordinate: [${lastCoord[0].toFixed(2)}, ${lastCoord[1].toFixed(2)}]`);
-            
-            // Check if coordinates are all the same (indicates conversion problem)
-            const allSame = zwiftCoordinates.every(coord => 
-                Math.abs(coord[0] - firstCoord[0]) < 1 && 
-                Math.abs(coord[1] - firstCoord[1]) < 1
-            );
-            
-            if (allSame) {
-                console.warn(`⚠️ WARNING: All Zwift coordinates are nearly identical - conversion may be failing!`);
-                console.log(`📍 Returning GPS coordinates as-is to debug`);
-                return gpsCoordinates.map(coord => [coord[0] * 100000, coord[1] * 100000]); // Scale up GPS for visibility
-            }
         }
 
         return zwiftCoordinates;
