@@ -1,0 +1,811 @@
+@use 'color';
+@use 'charts';
+@import url(elevation.css);
+
+$screen-side-margin: 0.5rem;
+
+html {
+    &.solid-background {
+        background: var(--background-color);
+
+        body {
+            background: transparent !important;
+        }
+    }
+
+    &.horizontal {
+        font-size: clamp(2.2mm, 18.6vh, 18mm);
+
+        #titlebar {
+            --extra-height: 2.5rem; // tuned to button-bar font-size
+        }
+
+        .button-bar {
+            font-size: 0.6rem;
+        }
+
+        .zones-holder,
+        .chart-holder,
+        .elevation-profile-holder {
+            height: 4.2rem;
+        }
+
+        #content {
+            overflow-x: auto;
+        }
+    }
+
+    &:not(.horizontal) {
+        #titlebar {
+            --extra-height: 3.5rem; // tuned to button-bar font-size
+        }
+
+        #content {
+            overflow-y: auto;
+        }
+    }
+}
+
+html:not(.settings-page).horizontal .screen,
+html.settings-page .screen.horizontal {
+    flex-direction: row;
+    align-items: stretch;
+    flex: 1 1 0;
+    --border-line-width: 0.02rem;
+    --border-line-height: calc(100% - 1rem);
+
+    &.configuring {
+        font-size: 0.86em;
+        height: 7em;
+        width: calc(96vw - 2rem) !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .page-title {
+        font-size: 5em;
+    }
+
+    .screen-section {
+        flex: 1 1 0;
+        justify-content: center;
+        overflow-y: clip;
+
+        .sub:first-child {
+            margin-right: 0.5em;
+
+            .value {
+                min-width: 6ch;
+            }
+        }
+    }
+
+    .single-data-field {
+        font-size: 1.8em;
+    }
+}
+
+html:not(.settings-page):not(.horizontal) .screen,
+html.settings-page .screen:not(.horizontal) {
+    --border-line-width: calc(100% - 1rem);
+    --border-line-height: 0.02rem;
+
+    &.configuring {
+        width: 14em !important;
+    }
+
+    .screen-section {
+        padding-top: 0.3rem;
+        overflow-x: clip;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+.screen-section.line-chart {
+    outline-style: none;
+    margin-left: 0;
+    margin-right: 0;
+    @include charts.legend(".s-chart-legend");
+
+    .s-chart-legend {
+        background: color.shade(fg, 100%, 0.7);
+        font-size: 0.65rem;
+        transition: opacity 400ms;
+        opacity: 0;
+        pointer-events: none;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+
+        .s-legend-item {
+            font-size: 0.8em;
+        }
+    }
+
+    &:focus .s-chart-legend {
+        opacity: 1;
+        pointer-events: initial;
+    }
+}
+
+.ec-tooltip {
+    font: unset !important;
+    font-variant-numeric: tabular-nums !important;
+    font-size: 0.6rem !important;
+    box-shadow: 1px 1px 5px 0 #0006 !important;
+
+    * {
+        font-size: 1em !important;
+    }
+
+    // XXX rewrite the echarts tooltip, this is a hack
+    div {
+        //display: flex !important;
+        //align-items: center;
+
+        // Begin horrible CSS hack.
+        // Echarts doesn't put classes on any of their spaghetti old school tooltip html. :(
+        // Two items: key above \n (dot, value)
+        span:first-of-type:nth-last-of-type(2) {
+            // dot...
+            width: 0.7em !important;
+            height: 0.7em !important;
+            border-radius: 50% !important;
+
+            ~ span:nth-of-type(2) { // value
+                margin-left: 0.4em !important;
+                font-weight: 600 !important;
+            }
+        }
+
+        // Three items: dot, key value
+        span:first-of-type:nth-last-of-type(3) {
+            // dot...
+            width: 0.7em !important;
+            height: 0.7em !important;
+            border-radius: 50% !important;
+
+            ~ span:nth-of-type(2) { // key
+                font-weight: 400 !important;
+
+                &::after {
+                    content: ':';
+                }
+            }
+
+            ~ span:nth-of-type(3) { // value
+                margin-left: 0.4em !important;
+                font-weight: 600 !important;
+            }
+        }
+    }
+}
+
+#content > .screen.hidden {
+    display: none;
+}
+
+@keyframes fadeout {
+    from {
+        opacity: 0;
+    }
+
+    25% {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+.screen {
+    display: flex;
+    flex-direction: column;
+
+    .page-title {
+        position: absolute;
+        z-index: 10000;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        animation: fadeout 1.8s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        font-size: 10em;
+        pointer-events: none;
+        color: #fff;
+        font-weight: 700;
+        text-shadow:
+            0 0 0.02em #000,
+            0 0 0.02em #000,
+            0 0 0.02em #000;
+        line-height: 0.8;
+
+        &::before {
+            content: 'SCREEN';
+            font-size: 0.5rem;
+        }
+    }
+
+    > header.athlete {
+        margin: 0;
+        font-size: 0.72em;
+        height: 0.22em;
+
+        + .time-in-zones {
+            padding-top: 0.5rem;
+        }
+
+        a {
+            opacity: 0.8;
+            position: absolute;
+            z-index: 1000;
+            top: $screen-side-margin * 0.28;
+            right: $screen-side-margin;
+            font-weight: 700;
+            font-variant: all-petite-caps;
+            line-height: 0.85;
+            text-shadow: 1px 1px 4px #0009;
+        }
+    }
+
+    .no-sections {
+        padding: 1em;
+        text-align: center;
+        font-weight: bold;
+        opacity: 0.5;
+    }
+
+    .border-line {
+        flex: 0 0 auto;
+        align-self: center;
+        background-color: #fff5;
+        width: var(--border-line-width);
+        height: var(--border-line-height);
+    }
+}
+
+@container zone (width < 2em) {
+    span {
+        display: none;
+    }
+}
+
+@container zone (width < 8ch) {
+    .extra {
+        display: none;
+    }
+}
+
+.button-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    background-image: linear-gradient(
+        135deg,
+        var(--theme-button-bar-top-left),
+        var(--theme-button-bar-bottom-right));
+    overflow: hidden;
+    font-size: 1rem;
+
+    .button {
+        padding: 1em 0.6em;
+        flex: 1 1 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:not(.disabled):hover {
+            background: #fff3;
+        }
+
+        &:not(.disabled):active {
+            background: #0003;
+        }
+
+        > img {
+            height: 1.2em !important;
+            filter: invert(1);
+        }
+    }
+}
+
+.screen-section {
+    display: flex;
+    flex-direction: column;
+    margin: 0.2rem $screen-side-margin;
+    position: relative;
+
+    &.large-data-fields,
+    &.data-fields {
+        &::before {
+            content: '';
+            position: absolute;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: var(--background-image);
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-origin: border-box;
+            background-size: auto 80%;
+            mix-blend-mode: soft-light;
+            opacity: 0.6;
+        }
+
+        .sub .value:has(.field-sparkline) {
+            padding-top: 0.4em;
+        }
+    }
+
+    &.large-data-fields {
+        font-size: 1.7em;
+
+        .full-height .value:has(.field-sparkline) {
+            font-size: 0.4em;
+        }
+    }
+
+    &.data-fields {
+        .full-height .value:has(.field-sparkline) {
+            font-size: 0.48em;
+        }
+    }
+
+    &.data-fields,
+    &.split-data-fields {
+        font-size: 1.3em;
+    }
+
+    &.columns {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    &[data-base-section-type="chart"] {
+        // margin: 0; // causes way too many compat issues XXX
+    }
+
+    .chart-holder {
+        aspect-ratio: 3 / 1;
+        font-size: 0.7rem;
+        height: 6em;
+    }
+
+    svg {
+        outline: 2px solid green !important;
+    }
+
+    .zones-holder {
+        overflow: hidden;
+
+        &.vert-bars {
+            font-size: 0.7rem;
+            aspect-ratio: 2.8 / 1;
+        }
+
+        &.pie {
+            padding: 0 0.3em;
+            margin: -1em 0;
+            aspect-ratio: 1 / 1;
+            font-size: 0.7rem;
+            align-items: center;
+            max-height: calc(99.9vh - 1em);
+        }
+
+        &.horiz-bar {
+            font-size: 0.7rem;
+            display: flex;
+            margin-left: 0.4rem;
+            margin-right: 0.4rem;
+            border-radius: 0.28em;
+            overflow: hidden;
+            min-width: 8rem;
+            align-items: center;
+
+            .zone {
+                container: zone / inline-size;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.8em;
+                color: color.shade(zone-color, 100%, 0.8);
+                overflow: hidden;
+                transition: flex 200ms;
+                flex: 1 1 0;
+                height: 2.6em;
+                background-image: linear-gradient(135deg,
+                    color.get(zone-color),
+                    color.get(zone-color, 0.6));
+
+                span.label {
+                    font-weight: 600;
+                    overflow: hidden;
+                }
+
+                span.extra {
+                    padding-left: 0.3em;
+                    font-weight: 300;
+                    font-size: 0.9em;
+                    font-variant-numeric: tabular-nums;
+
+                    &::before {
+                        content: '| ';
+                    }
+                }
+            }
+        }
+    }
+
+    .elevation-profile-holder {
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+        aspect-ratio: 3 / 1;
+        font-size: 1.2em;
+    }
+
+    .sub {
+        font-size: 0.6em;
+        display: grid;
+        grid-template-columns: auto auto auto;
+        align-items: baseline;
+        position: relative;
+    }
+
+    heading {
+        font-size: 0.7rem;
+        font-weight: 500;
+        line-height: 1.1;
+        display: block;
+        font-variant: all-small-caps;
+        grid-column: 1 / 4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;;
+    }
+
+    [data-field].full-height {
+        position: relative;
+        font-size: 2em;
+        font-weight: 800;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+
+        &.editing {
+            justify-content: center; // might be safe in all cases but not fully tested
+        }
+
+        .line {
+            display: flex;
+            align-items: baseline;
+        }
+
+        .label,
+        .unit,
+        .sub-label {
+            font-size: 0.55rem;
+            line-height: 1.1;
+            margin-right: 0.3rem;
+            opacity: 0.82;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+
+            &:empty {
+                margin: 0;
+            }
+        }
+
+        .sub-label:not(:empty) {
+            font-size: 0.48rem;
+            opacity: 0.8;
+            margin-top: 0.32rem;
+            line-height: 0.2;
+        }
+
+        .value {
+            line-height: 0.75; // Prevent layout shift for large values;
+        }
+
+        small {
+            font-size: 0.5em;
+            text-align: right;
+        }
+    }
+
+    &.single-data-field {
+        font-size: 3em;
+
+        [data-field] {
+            align-items: center;
+            overflow: hidden;
+
+            .value {
+                min-width: initial;
+                line-height: 0.8;
+
+                &:has(.field-sparkline) {
+                    font-size: 0.5em;
+                }
+            }
+        }
+    }
+
+    .field-row {
+        display: contents;
+
+        .editing-anchor {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            grid-column: 1 / 3;
+        }
+
+        &:not(.editing) .editing-anchor {
+            pointer-events: none;
+        }
+    }
+}
+
+.screen.configuring {
+    .screen-section {
+        .button-mask {
+            position: absolute;
+            font-size: 0.8rem;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.28em;
+            padding: 0.35em;
+            background-color: #495ce863;
+            transition: opacity 200ms, visibility 200ms;
+            transition-delay: 200ms;
+            opacity: 0;
+            visibility: hidden;
+
+            .button-group {
+                background-color: #222c;
+                flex-direction: row;
+                flex: 0 0 auto;
+                border: 1px solid #7778;
+                font-size: 1.3em;
+            }
+        }
+
+        img.example {
+            width: 100%;
+            height: 100%;
+            min-width: 7rem;
+            object-fit: contain;
+        }
+
+        &:hover,
+        &:focus {
+            .button-mask {
+                display: flex !important;
+                visibility: visible;
+                opacity: 1;
+                transition-delay: 0s;
+                z-index: 1000;
+            }
+        }
+
+        [data-field] {
+            .unit::before {
+                content: '*';
+            }
+            .value {
+                text-align: right;
+            }
+            .value::after {
+                content: none;
+            }
+        }
+        [data-field]:nth-child(even) {
+            .key::before {
+                content: 'Lorem';
+            }
+            .value::before {
+                content: '111';
+            }
+            .label::before {
+                content: 'actūs';
+            }
+        }
+        [data-field]:nth-child(odd) {
+            .key::before {
+                content: 'Ipsum';
+            }
+            .value::before {
+                content: '999';
+            }
+            .label::before {
+                content: 'pēs';
+            }
+        }
+    }
+
+    dialog.edit {
+        input, select {
+            margin-left: 0.3em;
+        }
+    }
+}
+
+.field-row .key {
+    font-size: 0.60rem;
+    margin-right: 0.3em;
+    opacity: 0.88;
+    position: relative;
+    margin-bottom: 0.33em;
+    min-width: 8ex;
+
+    &:not(:empty)::after {
+        content: ':';
+        opacity: 0.86;
+    }
+
+    tiny {
+        display: block;
+        white-space: nowrap;
+        font-size: 0.76em;
+        position: absolute;
+        left: 0.1em;
+        bottom: -0.90em;
+        font-variant: all-petite-caps;
+        font-weight: 600;
+    }
+}
+
+.value {
+    font-variant: tabular-nums;
+    text-align: right;
+    min-width: 3.1ch; // The .1 makes a big difference for decimal place values like "13.1" w/kg
+
+    &:empty {
+        &::after {
+            content: '-';
+        }
+    }
+
+    &.x-wide { font-variation-settings: "wdth" 96; }
+    &.x2-wide { font-variation-settings: "wdth" 92; }
+    &.x3-wide { font-variation-settings: "wdth" 86; }
+    &.x4-wide { font-variation-settings: "wdth" 78; }
+    &.x5-wide { font-variation-settings: "wdth" 70; }
+}
+
+.full-height .value {
+    &.x-wide { font-size: 0.96em; }
+    &.x2-wide { font-size: 0.90em; }
+    &.x3-wide { font-size: 0.82em; }
+    &.x3-wide { font-size: 0.72em; }
+    &.x4-wide { font-size: 0.62em; }
+    &.x5-wide { font-size: 0.50em; }
+}
+
+
+abbr.unit {
+    margin-left: 0.2em;
+    font-size: 0.55em;
+    opacity: 0.82;
+}
+
+.button-bar .button.reset img {
+    height: 0.9em !important;
+    margin: 0.15em 0;
+}
+
+html:not(.always-show-buttons) .button-bar.fixed {
+    display: none;
+}
+html.always-show-buttons #titlebar {
+    --extra-height: 0mm !important;
+
+    .button-bar {
+        display: none;
+    }
+}
+
+.settings-page {
+    .section {
+        header {
+            display: flex;
+            font-size: 1.1em;
+        }
+
+        .button-group {
+            border-radius: 0.26em;
+            overflow: hidden;
+            display: flex;
+            flex-grow: 1;
+            background-image: linear-gradient(to bottom, #0003, #0006);
+
+            &.vertical {
+                flex-direction: column;
+            }
+
+            .button {
+                padding: 0.5em 0.8em;
+                display: flex;
+                flex-grow: 1;
+                align-items: center;
+                justify-content: center;
+
+                &:not(.disabled):hover {
+                    background-color: #0006;
+                }
+
+                img {
+                    height: 1em;
+
+                    &.fa {
+                        filter: invert(1);
+                    }
+                }
+            }
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            .active-screen {
+                padding: 1em 1rem 0.5em;
+
+                > .screen {
+                    position: relative;
+                    width: 100%;
+                    border: 2px solid #7777;
+                    border-radius: 1em;
+                    aspect-ratio: 10 / 9;
+                    background: #333;
+                    color: white;
+                    box-shadow: 1px 1px 8px 1px #0007;
+                }
+            }
+
+            > label {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.8rem;
+
+                key {
+                    font-variant: all-small-caps;
+                    width: 100%;
+                    text-align: center;
+                }
+
+                input[type="button"] {
+                    padding-left: 1em;
+                    padding-right: 1em;
+                }
+            }
+        }
+    }
+}

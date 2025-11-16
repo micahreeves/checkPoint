@@ -1,0 +1,180 @@
+html {
+    &.solid-background {
+        background: var(--background-color);
+
+        body {
+            background: transparent;
+        }
+    }
+
+    --message-background-opacity: 0.7; // Just a fallback
+}
+
+body {
+    color: black;
+}
+
+abbr.unit {
+    font-weight: 400;
+    opacity: 0.94;
+    font-size: 0.88em;
+    padding-left: 0.1em;
+}
+
+#content {
+    align-items: flex-start;
+    padding: 0.2rem;
+    overflow-y: auto;
+    scroll-snap-type: y proximity;
+
+    &.reverse-order {
+        flex-direction: column-reverse;
+
+        > *:first-child {
+            /* https://bugs.chromium.org/p/chromium/issues/detail?id=411624 */
+            margin-bottom: auto;  /* Shift to top when unscrolled */
+        }
+    }
+    &:not(.reverse-order) {
+        > *:first-child {
+            /* https://bugs.chromium.org/p/chromium/issues/detail?id=411624 */
+            margin-top: auto;  /* Shift to bottom when unscrolled */
+        }
+    }
+    > :last-child {
+        scroll-snap-align: end;
+        scroll-margin-block-end: 1rem;
+    }
+    &.right-align {
+        align-items: flex-end;
+    }
+}
+
+.entry {
+    --message-hue: 0deg;
+    flex: 0 0 auto;
+    display: flex;
+    background-color: hsl(var(--message-hue) 80% 40% / var(--message-background-opacity));
+    color: #fff;
+    align-items: flex-start;  /* workaround a scroll issue with large content */
+    font-size: 0.85em;
+    margin-bottom: 0.3rem;
+    border-radius: 0.33em;
+    box-shadow: 1px 1px 5px 0 rgb(0 0 0 / calc(var(--message-background-opacity) * 0.5));
+    max-height: 0;
+    transition: max-height 1s, opacity var(--fadeout-time);
+    overflow: hidden;
+
+    &.muted {
+        background-color: #3336;
+
+        .content {
+            padding: 0.2em 0.5em;
+            font-size: 0.8em;
+            justify-content: center;
+            font-variant: all-small-caps;
+            font-weight: 500;
+        }
+    }
+
+    &.fadeout {
+        opacity: 0;
+    }
+
+    &.slidein {
+        max-height: calc(100vh - 1.5rem);
+    }
+
+    .avatar {
+        flex: 0 0 auto;
+        align-self: center;
+        width: 3em;
+        height: 3em;
+        border-radius: 50%;
+        overflow: hidden;
+        margin: 0.33em;
+        box-shadow: 0 0 0 1px #0002;
+
+        img {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    .content {
+        display: flex;
+        flex-direction: column;
+        max-height: 100%;
+
+        > .live {
+            font-size: 0.64em;
+            font-weight: 420;
+            padding: 0.1em 0.3rem 0.4em 0;
+            flex: 0 0 auto;
+            font-variant-numeric: tabular-nums;
+        }
+
+        > .live:empty {
+            padding-bottom: 0.2em;
+        }
+    }
+
+    .header {
+        font-size: 0.6em;
+        padding: 0.6em 0.3rem 0 0;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+
+        .name {
+            font-weight: bold;
+        }
+
+        .badge {
+            margin-left: 0.4em;
+            white-space: nowrap;
+
+            &:empty {
+                display: none;
+            }
+        }
+
+        .age {
+            padding-left: 0.5em;
+            flex: 1 0 auto;
+            text-align: end;
+            opacity: 0.9;
+        }
+    }
+
+    .message {
+        margin-right: 0.3rem;
+        margin-bottom: 0.3rem;
+        overflow-y: auto;
+        scroll-snap-type: y proximity;
+
+        > .chunk {
+            font-size: 0.8em;
+            white-space: pre-wrap;
+            word-break: break-word;
+
+            &:last-child {
+                scroll-snap-align: end;
+                scroll-margin-block-end: 1rem;
+            }
+        }
+    }
+}
+
+.timestamp {
+    font-size: 0.45em;
+    font-weight: bold;
+    font-variant: small-caps;
+    padding: 0.5em;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1em;
+}

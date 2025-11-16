@@ -1,0 +1,212 @@
+@use 'color';
+
+html {
+    font-size: 4.1mm;
+}
+
+#titlebar {
+    overflow: visible;
+
+    .search-box {
+        position: absolute;
+        margin-top: 0.8em;
+        margin-left: 0.4em;
+        right: 0.4em;
+        border-radius: 0.3em;
+        background-color: color.shade(fg, 70%);
+        border: 1px solid color.shade(fg, 30%, 40%);
+        padding: 0.6em;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        z-index: 100000;
+
+        &:not(.visible) {
+            display: none;
+        }
+
+        input {
+            margin: 0.2em 0;
+            max-width: 20ch;
+        }
+
+        .results {
+            font-size: 0.7em;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: flex-end;
+            max-height: 50vh;
+            overflow: auto;
+        }
+    }
+}
+
+
+#content {
+    overflow: auto;
+
+    section.card-group {
+        margin: 0.5em 1em;
+        padding-bottom: 0.5em;
+        background-color: color.shade(fg, 100%, 0.1);
+        border-radius: 0.28em;
+
+        &:not(:last-child) {
+            border-bottom: 0.02em solid color.shade(fg, 0%, 10%);
+        }
+
+        header {
+            margin: 0.3em 0.3rem;
+            padding: 0.1em 0.4em 0.3em;
+            font-variant: all-small-caps;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: color.shade(fg, 10%);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            ms {
+                margin-top: 0.3em;
+                margin-left: 0.1em;
+                font-size: 0.8em;
+                margin-right: 0.2em;
+            }
+        }
+
+        &.compressed {
+            .expanded-only {
+                display: none;
+            }
+
+            .cards {
+                max-height: 0;
+                overflow: hidden;
+                transition-timing-function: cubic-bezier(0, 0, 0, 1);
+            }
+        }
+
+        &:not(.compressed) .compressed-only {
+            display: none;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            max-height: 800vh;
+            overflow: auto;
+            transition: max-height 500ms;
+            transition-timing-function: cubic-bezier(0, 0, 1, 0);
+        }
+
+        $markedGradient: linear-gradient(135deg, color.get(marked, 100%), color.get(marked, 100%) 8%, transparent 8%);
+        $followerGradient: linear-gradient(-135deg, color.get(follower, 80%), color.get(follower, 80%) 8%, transparent 8%);
+        $followingGradient: linear-gradient(-135deg, color.get(following, 80%), color.get(following, 80%) 8%, transparent 8%);
+        $followingGradientAlt: linear-gradient(135deg, color.get(following, 80%), color.get(following, 80%) 8%, transparent 8%);
+
+        &.following .card {
+            background-color: color.shade(following, 0%, 80%);
+            color: color.shade(following, 100%);
+
+            &.follower {
+                background-image: $followerGradient;
+            }
+
+            &.marked {
+                background-image: $markedGradient;
+            }
+
+            &.follower.marked {
+                background-image: $followerGradient, $markedGradient;
+            }
+        }
+
+        &.marked .card {
+            background-color: color.get(marked, 80%);
+            color: color.shade(marked, 100%);
+
+            &.follower {
+                background-image: $followerGradient;
+            }
+
+            &.following {
+                background-image: $followingGradientAlt;
+            }
+
+            &.follower.following {
+                background-image: $followerGradient, $followingGradientAlt;
+            }
+        }
+
+        &.followers .card {
+            background-color: color.get(follower, 80%);
+            color: color.shade(follower, 100%);
+
+            &.following {
+                background-image: $followingGradient;
+            }
+
+            &.marked {
+                background-image: $markedGradient;
+            }
+
+            &.following.marked {
+                background-image: $followingGradient, $markedGradient;
+            }
+        }
+    }
+}
+
+.card {
+    width: 8.4em;
+    margin: 0.5rem;
+    padding: 0.5em;
+    overflow: hidden;
+    background-color: color.shade(bg, 10%, 10%);
+    border-radius: 0.3em;
+    font-size: 0.86em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: box-shadow 200ms, transform 200ms;
+    user-select: text;
+    text-decoration: none;
+
+    &:hover {
+        transform: translate(-1.5px, -1.5px);
+        box-shadow: 2px 2px 10px 2px color.shade(fg, 100%, 25%);
+    }
+
+    &:active {
+        transform: translate(.5px, .5px);
+        box-shadow: inset 2px 2px 10px 2px color.shade(fg, 100%, 25%);
+    }
+
+    &.hidden {
+        display: none;
+    }
+
+    .avatar {
+        margin: 0.25em;
+        padding: 0.75em;
+        border-radius: 50%;
+        max-height: 8em;
+        background-color: color.shade(fg, 10%, 10%);
+
+        img {
+            border-radius: 50%;
+            object-fit: cover;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+    }
+
+    .line {
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}

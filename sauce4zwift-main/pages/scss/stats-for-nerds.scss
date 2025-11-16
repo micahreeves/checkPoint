@@ -1,0 +1,142 @@
+@use 'color';
+
+html {
+    font-size: 4mm;
+    user-select: text;
+}
+
+#content {
+    overflow: auto;
+    padding: 1em;
+
+    .processes {
+        display: flex;
+        flex-direction: column;
+    }
+
+    section {
+        display: flex;
+        flex-wrap: wrap;
+
+        &:not(:last-child) {
+            padding-bottom: 1em;
+            margin-bottom: 1em;
+        }
+
+        .column {
+            flex: 1 1 0;
+            min-width: 185px;
+            max-width: 100%;
+            overflow: hidden;
+
+            &:not(:last-child) {
+                padding-right: 1em;
+            }
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1.1em;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #aaa6;
+
+            label {
+                font-size: 0.8em;
+                font-weight: normal;
+            }
+        }
+
+        &.debug-info {
+            .entry {
+                display: flex;
+                align-items: baseline;
+                color: color.shade(fg-alt, 3%);
+                
+                key, value {
+                    display: block;
+                }
+
+                abbr.unit {
+                    font-size: 0.8em;
+                    padding-left: 0.1em;
+                    opacity: 0.8;
+                }
+
+                key {
+                    flex: 0 0 auto;
+                    min-width: 9ch;
+                    margin-right: 1ch;
+                    font-weight: 500;
+                    font-size: 0.9em;
+
+                    &::after {
+                        content: ':'
+                    }
+
+                    &.indent {
+                        &::before {
+                            padding: 0 0.26em;
+                            content: '●';
+                            opacity: 0.8;
+                        }
+
+                        &, + value {
+                            line-height: 1.45;
+                        }
+                    }
+                }
+
+                value {
+                    flex: 1 1 0;
+                    font-variant-numeric: tabular-nums;
+
+                    &[data-id="cpuModel"] {
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        font-stretch: semi-condensed;
+                    }
+                }
+            }
+        }
+    }
+
+    .chart-holder {
+        flex: 0 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        font-size: 0.75em;
+        border-bottom: 1px solid #aaa6;
+
+        &.hidden {
+            display: none;
+        }
+
+        &:hover {
+            background-color: #9993;
+        }
+
+        .chart {
+            padding: 0;
+            margin: 0;
+            height: 75px;
+
+            &.line {
+                flex: 1 1 0;
+                min-width: 300px;
+            }
+
+            &.gauge {
+                font-size: 0.4em;
+                flex: 0 0 150px;
+            }
+        }
+    }
+}

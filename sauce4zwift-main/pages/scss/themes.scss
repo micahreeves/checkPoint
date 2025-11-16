@@ -1,0 +1,578 @@
+@use 'color';
+
+:root {
+    --bg-texture-image: url('../images/cubism-bg-texture.webp');
+    --bg-texture-blend-mode: overlay;
+
+    --theme-base-color: #000;
+
+    // Used for cases were we need to decide if the theme is light or dark
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 100%;
+    --theme-intrinsic-shade-dir: -1;
+
+    --theme-intrinsic-inverted-hue: var(--theme-intrinsic-hue);
+    --theme-intrinsic-inverted-sat: var(--theme-intrinsic-sat);
+    --theme-intrinsic-inverted-light: calc(var(--theme-intrinsic-light) + (100% * var(--theme-intrinsic-shade-dir)));
+    --theme-intrinsic-inverted-shade-dir: calc(var(--theme-intrinsic-shade-dir) * -1);
+
+    --theme-bookend-hue: 0;
+    --theme-bookend-sat: 0%;
+    --theme-bookend-light: 13%;
+    --theme-bookend-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 100%;
+    --theme-fg-shade-dir: -1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 100%;
+    --theme-bg-light: 36%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 233;
+    --theme-bg2-sat: 96%;
+    --theme-bg2-light: 15%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-fg-alt-hue: 0;
+    --theme-fg-alt-sat: 0%;
+    --theme-fg-alt-light: 100%;
+    --theme-fg-alt-shade-dir: -1;
+
+    --theme-bg-alt-hue: 235;
+    --theme-bg-alt-sat: 96%;
+    --theme-bg-alt-light: 4%;
+    --theme-bg-alt-shade-dir: 1;
+
+    --theme-bg-alt2-hue: 238;
+    --theme-bg-alt2-sat: 80%;
+    --theme-bg-alt2-light: 15%;
+    --theme-bg-alt2-shade-dir: 1;
+
+    --theme-primary-hue: 212;
+    --theme-primary-sat: 100%;
+    --theme-primary-light: 40%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-following-hue: 140;
+    --theme-following-sat: 100%;
+    --theme-following-light: 40%;
+    --theme-following-shade-dir: 1;
+
+    --theme-follower-hue: 225;
+    --theme-follower-sat: 70%;
+    --theme-follower-light: 50%;
+    --theme-follower-shade-dir: 1;
+
+    --theme-marked-hue: 0;
+    --theme-marked-sat: 2%;
+    --theme-marked-light: 90%;
+    --theme-marked-shade-dir: -1;
+
+    --theme-negative-hue: 0;
+    --theme-negative-sat: 85%;
+    --theme-negative-light: 46%;
+    --theme-negative-shade-dir: 1;
+
+    --theme-positive-hue: 130;
+    --theme-positive-sat: 60%;
+    --theme-positive-light: 50%;
+    --theme-positive-shade-dir: 1;
+
+    --theme-button-bar-top-left: #1d0050de;
+    --theme-button-bar-bottom-right: #2b0078de;
+}
+
+html[data-bg-texture="none"] {
+    --bg-texture-image: none;
+}
+html[data-bg-texture="cubism"] {
+    --bg-texture-image: url('../images/cubism-bg-texture.webp');
+}
+html[data-bg-texture="checkered"] {
+    --bg-texture-image: url('../images/checkered-bg-texture.webp');
+}
+html[data-bg-texture="maze"] {
+    --bg-texture-image: url('../images/maze-bg-texture.webp');
+}
+
+html[data-theme="gpt-vibrant"] {
+    --theme-bg-hue: 27;
+    --theme-bg-sat: 100%;
+    --theme-bg-light: 96%;
+    --theme-bg-shade-dir: -1;
+
+    --theme-bg2-hue: 27;
+    --theme-bg2-sat: 100%;
+    --theme-bg2-light: 80%;
+    --theme-bg2-shade-dir: -1;
+
+    --theme-fg-hue: 36;
+    --theme-fg-sat: 100%;
+    --theme-fg-light: 50%;
+    --theme-fg-shade-dir: 1;
+
+    --theme-secondary-fg-hue: 36;
+    --theme-secondary-fg-sat: 100%;
+    --theme-secondary-fg-light: 50%;
+    --theme-secondary-fg-shade-dir: 1;
+
+    --theme-tertiary-fg-hue: 36;
+    --theme-tertiary-fg-sat: 100%;
+    --theme-tertiary-fg-light: 50%;
+    --theme-tertiary-fg-shade-dir: 1;
+
+    --theme-bookend-hue: 330;
+    --theme-bookend-sat: 100%;
+    --theme-bookend-light: 50%;
+    --theme-bookend-shade-dir: 1;
+}
+
+html[data-theme="gpt-sunset"] {
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 0%;
+    --theme-intrinsic-shade-dir: 1;
+
+    --theme-bg-hue: 25;
+    --theme-bg-sat: 100%;
+    --theme-bg-light: 20%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 25;
+    --theme-bg2-sat: 100%;
+    --theme-bg2-light: 10%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-fg-hue: 25;
+    --theme-fg-sat: 100%;
+    --theme-fg-light: 90%;
+    --theme-fg-shade-dir: -1;
+
+    --theme-secondary-fg-hue: 25;
+    --theme-secondary-fg-sat: 100%;
+    --theme-secondary-fg-light: 90%;
+    --theme-secondary-fg-shade-dir: -1;
+
+    --theme-tertiary-fg-hue: 25;
+    --theme-tertiary-fg-sat: 100%;
+    --theme-tertiary-fg-light: 90%;
+    --theme-tertiary-fg-shade-dir: -1;
+
+    --theme-bookend-hue: 25;
+    --theme-bookend-sat: 100%;
+    --theme-bookend-light: 50%;
+    --theme-bookend-shade-dir: -1;
+}
+
+html[data-theme="bluepink"] {
+    --theme-bg-hue: 204;
+    --theme-bg-sat: 100%;
+    --theme-bg-light: 40%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 220;
+    --theme-bg2-sat: 70%;
+    --theme-bg2-light: 27%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-primary-hue: 354;
+    --theme-primary-sat: 87%;
+    --theme-primary-light: 52%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-button-bar-top-left: #da072de0;
+    --theme-button-bar-bottom-right: #770333;
+}
+
+html[data-theme="burgundy"] {
+    --theme-bookend-hue: 25;
+    --theme-bookend-sat: 96%;
+    --theme-bookend-light: 15%;
+    --theme-bookend-shade-dir: 1;
+
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 0%;
+    --theme-intrinsic-shade-dir: 1;
+
+    --theme-bg-hue: 24;
+    --theme-bg-sat: 90%;
+    --theme-bg-light: 12%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 20;
+    --theme-bg2-sat: 58%;
+    --theme-bg2-light: 16%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-bg-alt-hue: 0;
+    --theme-bg-alt-sat: 96%;
+    --theme-bg-alt-light: 35%;
+    --theme-bg-alt-shade-dir: 1;
+
+    --theme-bg-alt2-hue: 0;
+    --theme-bg-alt2-sat: 32%;
+    --theme-bg-alt2-light: 10%;
+    --theme-bg-alt2-shade-dir: 1;
+
+    --theme-primary-hue: 20;
+    --theme-primary-sat: 100%;
+    --theme-primary-light: 40%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-negative-hue: 350;
+    --theme-negative-sat: 50%;
+    --theme-negative-light: 50%;
+    --theme-negative-shade-dir: 1;
+
+    --theme-button-bar-top-left: #937b19e0;
+    --theme-button-bar-bottom-right: #819443;
+}
+
+html[data-theme="green"] {
+    --theme-bg-hue: 132;
+    --theme-bg-sat: 73%;
+    --theme-bg-light: 43%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 142;
+    --theme-bg2-sat: 50%;
+    --theme-bg2-light: 0%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-primary-hue: 0;
+    --theme-primary-sat: 0%;
+    --theme-primary-light: 10%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-following-hue: 30;
+    --theme-following-sat: 73%;
+    --theme-following-light: 52%;
+    --theme-following-shade-dir: -1;
+
+    --theme-button-bar-top-left: #0008;
+    --theme-button-bar-bottom-right: #000;
+}
+
+html[data-theme="light"] {
+    --bg-texture-blend-mode: normal;
+
+    --theme-base-color: #fff;
+
+    --theme-bookend-hue: 5;
+    --theme-bookend-sat: 80%;
+    --theme-bookend-light: 30%;
+    --theme-bookend-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 15%;
+    --theme-fg-shade-dir: 1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 100%;
+    --theme-bg-shade-dir: -1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 0%;
+    --theme-bg2-light: 84%;
+    --theme-bg2-shade-dir: -1;
+
+    --theme-fg-alt-hue: 0;
+    --theme-fg-alt-sat: 0%;
+    --theme-fg-alt-light: 15%;
+    --theme-fg-alt-shade-dir: 1;
+
+    --theme-bg-alt-hue: 0;
+    --theme-bg-alt-sat: 0%;
+    --theme-bg-alt-light: 100%;
+    --theme-bg-alt-shade-dir: 1;
+
+    --theme-bg-alt2-hue: 0;
+    --theme-bg-alt2-sat: 0%;
+    --theme-bg-alt2-light: 80%;
+    --theme-bg-alt2-shade-dir: 1;
+
+    --theme-following-shade-dir: -1;
+
+    --theme-button-bar-top-left: #aaac;
+    --theme-button-bar-bottom-right: #ccc;
+}
+
+html[data-theme="transparent-light"] {
+    &:not(.settings-mode):not(.settings-page):not(.frame) body:not(.transparent-bg):not(.alt-background) {
+        --bg-opacity: 0;
+        --bg-texture-image: none;
+        --outline-opacity: 0;
+    }
+
+    --bg-texture-blend-mode: normal;
+
+    --theme-base-color: transparent;
+
+    --theme-bookend-hue: 5;
+    --theme-bookend-sat: 80%;
+    --theme-bookend-light: 30%;
+    --theme-bookend-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 15%;
+    --theme-fg-shade-dir: 1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 98%;
+    --theme-bg-shade-dir: -1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 0%;
+    --theme-bg2-light: 82%;
+    --theme-bg2-shade-dir: -1;
+
+    --theme-fg-alt-hue: 0;
+    --theme-fg-alt-sat: 0%;
+    --theme-fg-alt-light: 15%;
+    --theme-fg-alt-shade-dir: 1;
+
+    --theme-bg-alt-hue: 0;
+    --theme-bg-alt-sat: 0%;
+    --theme-bg-alt-light: 100%;
+    --theme-bg-alt-shade-dir: 1;
+
+    --theme-bg-alt2-hue: 0;
+    --theme-bg-alt2-sat: 0%;
+    --theme-bg-alt2-light: 80%;
+    --theme-bg-alt2-shade-dir: 1;
+
+    --theme-following-shade-dir: -1;
+
+    --theme-button-bar-top-left: #aaac;
+    --theme-button-bar-bottom-right: #ccc;
+}
+
+html[data-theme="dark"] {
+    --theme-base-color: #000;
+
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 12%;
+    --theme-intrinsic-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 98%;
+    --theme-fg-shade-dir: -1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 12%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 0%;
+    --theme-bg2-light: 18%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-button-bar-top-left: #333c;
+    --theme-button-bar-bottom-right: #555e;
+}
+
+html[data-theme="transparent-dark"] {
+    &:not(.settings-mode):not(.settings-page):not(.frame) body:not(.transparent-bg):not(.alt-background) {
+        --bg-opacity: 0;
+        --bg-texture-image: none;
+        --outline-opacity: 0;
+    }
+
+    --theme-base-color: transparent;
+
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 12%;
+    --theme-intrinsic-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 98%;
+    --theme-fg-shade-dir: -1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 12%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 0%;
+    --theme-bg2-light: 18%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-button-bar-top-left: #333b;
+    --theme-button-bar-bottom-right: #555e;
+}
+
+html[data-theme="semi-transparent-dark"] {
+    &:not(.settings-mode):not(.settings-page):not(.frame) body:not(.transparent-bg):not(.alt-background) {
+        --bg-opacity: 0.5;
+        --outline-opacity: 0;
+    }
+
+    --theme-base-color: transparent;
+
+    --theme-intrinsic-hue: 0;
+    --theme-intrinsic-sat: 0%;
+    --theme-intrinsic-light: 0%;
+    --theme-intrinsic-shade-dir: 1;
+
+    --theme-fg-hue: 0;
+    --theme-fg-sat: 0%;
+    --theme-fg-light: 100%;
+    --theme-fg-shade-dir: -1;
+
+    --theme-bg-hue: 0;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 0%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 0%;
+    --theme-bg2-light: 0%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-button-bar-top-left: #333b;
+    --theme-button-bar-bottom-right: #555e;
+}
+
+html[data-theme="aqua"] {
+    --theme-base-color: #99f;
+
+    --theme-fg-hue: 20;
+    --theme-fg-sat: 30%;
+    --theme-fg-light: 10%;
+    --theme-fg-shade-dir: 1;
+
+    --theme-bookend-hue: 184;
+    --theme-bookend-sat: 47%;
+
+    --theme-bg-hue: 177;
+    --theme-bg-sat: 71%;
+    --theme-bg-light: 70%;
+
+    --theme-bg2-hue: 203;
+    --theme-bg2-light: 30%;
+
+    --theme-fg-alt-hue: 0;
+    --theme-fg-alt-sat: 0%;
+    --theme-fg-alt-light: 100%;
+    --theme-fg-alt-shade-dir: -1;
+
+    --theme-button-bar-top-left: #08c4a8de;
+    --theme-button-bar-bottom-right: #120d87de;
+}
+
+html[data-theme="watermelon"] {
+    --theme-base-color: #ff1300;
+
+    --theme-fg-light: 10%;
+    --theme-fg-shade-dir: 1;
+
+    --theme-bookend-hue: 10;
+    --theme-bookend-sat: 100%;
+    --theme-bookend-light: 30%;
+
+    --theme-bg-hue: 118;
+
+    --theme-bg2-hue: 148;
+    --theme-bg2-sat: 98%;
+    --theme-bg2-light: 69%;
+    --theme-bg2-shade-dir: -1;
+
+    --theme-following-hue: 0;
+    --theme-following-sat: 100%;
+    --theme-following-light: 40%;
+    --theme-following-shade-dir: 1;
+
+    --theme-primary-hue: 235;
+
+    --theme-button-bar-top-left: #eb0101de;
+    --theme-button-bar-bottom-right: #782f00de;
+}
+
+html[data-theme="red-sun"] {
+    --theme-base-color: #401010;
+
+    --theme-bg-hue: 2;
+    --theme-bg-sat: 75%;
+    --theme-bg-light: 33%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 0;
+    --theme-bg2-sat: 90%;
+    --theme-bg2-light: 20%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-primary-hue: 223;
+    --theme-primary-sat: 71%;
+    --theme-primary-light: 36%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-button-bar-top-left: #01005b;
+    --theme-button-bar-bottom-right: #02193bf8;
+}
+
+html[data-theme="blue-moon"] {
+    --theme-base-color: #101050;
+
+    --theme-bg-hue: 214;
+    --theme-bg-sat: 76%;
+    --theme-bg-light: 26%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 220;
+    --theme-bg2-sat: 86%;
+    --theme-bg2-light: 36%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-primary-hue: 10;
+    --theme-primary-sat: 73%;
+    --theme-primary-light: 44%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-button-bar-top-left: #2c2d2de0;
+    --theme-button-bar-bottom-right: #272931;
+}
+
+html[data-theme="forced-background"] {
+    body:not(#_#_) { /* high specificity overrides */
+        --bg-opacity: 1 !important;
+        --min-bg-opacity: 1 !important;
+        --outline-opacity: 1 !important;
+        --bg-texture-image: revert-layer;
+        background-color: color.get(bg) !important; /* fallback for windows overriding background* */
+    }
+
+    --theme-base-color: #1a2020;
+
+    --theme-bg-hue: 130;
+    --theme-bg-sat: 0%;
+    --theme-bg-light: 30%;
+    --theme-bg-shade-dir: 1;
+
+    --theme-bg2-hue: 130;
+    --theme-bg2-sat: 6%;
+    --theme-bg2-light: 18%;
+    --theme-bg2-shade-dir: 1;
+
+    --theme-primary-hue: 7;
+    --theme-primary-sat: 87%;
+    --theme-primary-light: 46%;
+    --theme-primary-shade-dir: 1;
+
+    --theme-button-bar-top-left: #01005b;
+    --theme-button-bar-bottom-right: #02193bf8;
+}

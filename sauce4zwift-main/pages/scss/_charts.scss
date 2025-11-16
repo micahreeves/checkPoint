@@ -1,0 +1,42 @@
+@use 'color';
+
+@mixin legend($selector) {
+    #{$selector} {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-evenly;
+        max-width: 100%;
+        user-select: none;
+
+        .s-legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.12em 0.33em;
+            cursor: pointer;
+
+            &.hidden {
+                opacity: 0.4;
+
+                .color {
+                    background-color: color.get(fg, 0.4) !important;
+                }
+            }
+
+            &:hover {
+                text-decoration: underline;
+            }
+
+            .color {
+                border-radius: 50%;
+                width: 0.7em;
+                height: 0.7em;
+                overflow: hidden;
+                border: 0.075em solid color.shade(fg, 10%, 0.8);
+                margin-right: 0.3em;
+                opacity: 0.82;
+            }
+        }
+    }
+}

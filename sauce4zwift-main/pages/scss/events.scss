@@ -1,0 +1,1042 @@
+@use 'color';
+@import url(profile_tpl.css);
+@import url(expandable-table.css);
+
+html {
+    font-size: 4.1mm;
+
+    @media (max-width: 768px) and (min-width: 375px) {
+        font-size: 4.7mm;
+    }
+}
+
+html.single-event {
+    #titlebar {
+        .type,
+        .filter {
+            display: none;
+        }
+    }
+
+    thead.loader,
+    tfoot.loader {
+        display: none;
+    }
+}
+
+#titlebar {
+    header {
+        @container root-html (max-width: 375px) {
+            .overflow {
+                flex-wrap: wrap
+            }
+        }
+
+        .type,
+        .filter {
+            display: flex;
+            align-items: center;
+        }
+
+        .filter input {
+            width: 12ch;
+        }
+    }
+}
+
+#content {
+    padding: 0;
+    overflow: auto;
+    transition: background 200ms;
+    position: relative;
+
+    &::after {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 200ms, visibility 200ms;
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-color: color.shade(intrinsic, 0%, 0.8);
+        color: color.shade(intrinsic-inverted, 0%);
+        z-index: -1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    &.loading::after {
+        opacity: 1;
+        visibility: visible;
+        z-index: 100;
+    }
+}
+
+
+#content > table {
+    user-select: text;
+
+    > thead:not(.loader) {
+        position: sticky;
+        z-index: 1;
+        top: 0;
+        background-image: linear-gradient(to bottom, color.shade(bg, -10%), color.shade(bg, 0%));
+    }
+}
+
+contents {
+    display: contents;
+}
+
+.trophy {
+    font-size: 1.1em;
+    border-radius: 50%;
+    width: 1.5em;
+    height: 1.5em;
+    line-height: 1.65em;
+    color: color.shade(intrinsic-inverted, 10%, 0.8);
+    text-align: center;
+    box-shadow: 1px 1px 3px 0 #0002;
+    margin-bottom: 0;
+
+    &.gold {
+        background-color: gold;
+    }
+    &.silver {
+        background-color: silver;
+    }
+    &.bronze {
+        background-color: #cd7f32;
+    }
+}
+
+
+table {
+    border-collapse: collapse;
+
+    thead:not(.loader) th {
+        font-variant-caps: all-small-caps;
+        font-weight: 500;
+    }
+
+    thead.loader,
+    tfoot.loader {
+        background-image: linear-gradient(to bottom, color.shade(intrinsic, 30%), color.shade(intrinsic, 15%));
+        color: color.shade(intrinsic-inverted, 0%);
+        transition: opacity 200ms;
+        opacity: 0.7;
+        cursor: pointer;
+        font-variant-caps: all-small-caps;
+
+        &.loading {
+            pointer-events: none;
+            opacity: 0.2;
+        }
+
+        &:not(.loading):hover {
+            opacity: 1;
+        }
+
+        td {
+            text-align: center;
+            padding: 0.3em;
+        }
+    }
+
+    > thead > tr > th,
+    > tbody > tr > td {
+        padding: 0.4em 0.3em;;
+        text-align: left;
+
+        &:first-child {
+            padding-left: 0.4em;
+        }
+        &:last-child {
+            padding-right: 0.4em;
+        }
+    }
+
+    &.expandable {
+        > tbody > tr {
+            &:nth-child(4n-1) {
+                background-color: color.shade(intrinsic-inverted, 0%, 0.1);
+            }
+
+            &.summary {
+                > td {
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
+                    overflow: hidden;
+                }
+            }
+
+            &.details .container {
+                background-color: color.shade(intrinsic-inverted, 0%, 0.1);
+                padding: 1.5em;
+                border-radius: 0.28em;
+                box-shadow: 1px 1px 5px #0003;
+
+                &:empty {
+                    min-height: 5em;
+
+                    &::after {
+                        font-size: 2em;
+                        content: 'Loading...'
+                    }
+                }
+            }
+
+            &.expanded,
+            &.expanded + tr.details {
+                background-color: color.shade(primary, 3%) !important;
+                color: color.shade(primary, 100%) !important;
+            }
+
+            @container root-html (max-width: 768px)  {
+                &.details > td {
+                    padding: 0;
+
+                    .container {
+                        padding: 0.6em 0.5em;
+                    }
+                }
+            }
+        }
+    }
+
+    &.events {
+        > thead > tr > th,
+        > tbody > tr > td {
+            &:first-child {
+                padding-left: 0.88rem;
+            }
+            &:last-child {
+                padding-right: 0.88rem;
+            }
+        }
+
+        > tbody > tr {
+            scroll-margin-top: 2.38em;  // roughly header height
+
+            &.expanded {
+                --intersection-offset: 0px;
+                --sticky-offset: -0.1em;
+                position: sticky;
+                z-index: 2;
+                top: calc(var(--sticky-offset) - var(--intersection-offset));
+            }
+
+            &.starts-soon > td.start {
+                animation: pulse-color 1.33s infinite steps(20);
+            }
+
+            &.started {
+                color: color.shade(fg, 5%);
+
+                &.joinable > td.start {
+                    color: #ffda00;
+                    text-shadow: 0.5px 0.5px #000;
+                    font-weight: 500;
+                }
+
+                &:not(.joinable) {
+                    color: color.shade(fg, 20%);
+                    font-weight: 350;
+
+                    > td.start {
+                        font-size: 0.92em;
+
+                        localized {
+                            position: relative;
+                            display: inline-block !important;
+
+                            &::before {
+                                color: #d338;
+                                --slash-size: 2px;
+                                content: '';
+                                position: absolute;
+                                inset: 0.4em -0.2em;
+                                background-image: linear-gradient(to top right,
+                                    transparent calc(50% - (var(--slash-size) / 2)),
+                                    currentColor calc(50% - (var(--slash-size) / 2)),
+                                    currentColor calc(50% + (var(--slash-size) / 2)),
+                                    transparent calc(50% + (var(--slash-size) / 2)));
+                                pointer-events: none;
+                            }
+                        }
+                    }
+
+                    + tr.details header .button.signup-action {
+                        display: none;
+                    }
+                }
+            }
+
+            &.signedup {
+                background-color: color.shade(intrinsic-inverted, 0%, 0.5);
+                color: color.shade(intrinsic, 0%);
+                outline: 4px solid color.get(bg2);
+                outline-offset: -4px;
+
+                &:not(.expanded):hover {
+                    background-color: color.shade(intrinsic-inverted, 18%, 0.9) !important;
+                }
+            }
+
+            &.hidden {
+                display: none;
+
+                + tr {
+                    display: none;
+                }
+            }
+
+            &.soonest {
+                border-top: 0.22em solid #fffd;
+            }
+
+            > td.start {
+                font-stretch: 94%;
+            }
+
+            > td.type {
+                font-size: 0.82em;
+                font-weight: 550;
+                font-stretch: 92%;
+            }
+
+            // NOTE: the hacks below use pct which seems to be a pct of remaining available width
+            // It should be carefully balanced with the size of other non max-width-hacked cols.
+            > td.name {
+                max-width: 0; // hack to enable container % width
+                width: 25%; // must be coupled with max-width:0
+            }
+            > td.route {
+                max-width: 0; // hack to enable container % width
+                width: 11%; // must be coupled with max-width:0
+            }
+            // end hack
+
+            > td.route {
+                font-weight: 350;
+                font-style: italic;
+                font-size: 0.92em;
+                font-stretch: 91%;
+            }
+
+            > td.groups {
+                font-size: 0.86em;
+
+                > * {
+                    margin-left: 0.1em;
+                }
+            }
+        }
+    }
+
+    abbr.unit {
+        font-size: 0.8em;
+        opacity: 0.9;
+        margin-left: 0.1em;
+    }
+
+    .tags .badge {
+        --sat: 0.2;
+        --hue: 15deg;
+    }
+
+    .rules .badge {
+        --sat: 0.7;
+        --hue: 8deg;
+    }
+
+    .event-info {
+        display: flow-root;
+
+        .card {
+            float: right;
+        }
+
+        .desc {
+            font-size: 0.9em;
+            opacity: 0.9;
+            white-space: pre-line;
+            line-height: 1.4; // condense a bit
+            overflow-wrap: anywhere;
+        }
+
+        .subsection {
+            font-size: 0.9em;
+            margin: 0.5rem 0.4rem;
+            padding: 0.5rem 0.68rem;
+            border-left: 3px solid color.shade(intrinsic, 0%, 0.2);
+
+            b {
+                font-weight: 500;
+            }
+        }
+
+        .powerups {
+            key,
+            value {
+                display: inline-block;
+            }
+
+            key {
+                min-width: 9ch;
+                font-weight: 500;
+                margin-left: 1em;
+            }
+        }
+    }
+
+    .elevation-chart {
+        font-size: 2.5em;
+        height: 4rem;
+        mix-blend-mode: luminosity;
+    }
+
+    .subgroups {
+        padding-top: 0.5em;
+
+        .event-subgroup {
+            display: flex;
+            flex-direction: column;
+            margin-top: 0.5em;
+            padding: 0.68em;
+            background: #0300001f;
+            border-radius: 0.3em;
+            font-variant-numeric: tabular-nums;
+
+            &:not(:last-child) {
+                margin-bottom: 1em;
+            }
+
+            &.collapsed {
+                padding: 0;
+                margin-top: 0;
+                margin-bottom: 0;
+
+                > header {
+                    font-size: 0.8em;
+                }
+
+                > .entrants-wrap {
+                    display: none;
+                }
+            }
+
+            &:not(.results) .only-results,
+            &:not(.signups) .only-signups,
+            &:not(.loading) .only-loading,
+            &:not(.can-signup) .only-can-signup,
+            &:not(.signedup) .only-signedup,
+            &:not(.wkg) .only-wkg,
+            &:not(.collapsed) .only-collapsed {
+                display: none;
+            }
+            &.wkg .not-wkg,
+            &.collapsed .not-collapsed {
+                display: none;
+            }
+
+            &:not(.signups) {
+                > header .button.signup-action {
+                    display: none;
+                }
+            }
+
+            .tags,
+            .rules {
+                font-size: 0.88em;
+                padding: 0.8em 0.4em 0.1em;
+            }
+
+            > header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background-image: linear-gradient(to bottom,
+                    color.shade(intrinsic-inverted, 0%, 0.3),
+                    color.shade(intrinsic-inverted, 0%, 0.85));
+                border-radius: 0.28em;
+                padding: 1em;
+                color: color.get(intrinsic);
+                font-size: 0.95em;
+
+                > *:not(:last-child) {
+                    margin-right: 0.5rem;
+                }
+
+                @container root-html (max-width: 768px)  {
+                    flex-wrap: wrap;
+                }
+
+                @container root-html (min-width: 768px)  {
+                    // Make it overlay band style
+                    margin: 0 -1.5em;
+                    padding: 1em 1.25em;
+                }
+
+                .label {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+
+                    .group {
+                        position: absolute;
+                        top: -1.35em;
+                        left: 1px;
+                        font-variant: all-petite-caps;
+                        font-weight: 800;
+                        font-size: 0.85em;
+                        opacity: 0.6;
+                    }
+
+                    .button[data-action] {
+                        text-transform: uppercase;
+                        font-weight: 600;
+                        font-size: 0.74em;
+                        white-space: nowrap;
+
+                        ms {
+                            font-size: 1.2em;
+                            margin-left: -0.4em;
+                            margin-right: 0.15em;
+                        }
+                    }
+                }
+
+                > :empty {
+                    display: none;
+                }
+
+                .badge {
+                    font-size: 1.065em;
+                    margin-right: 0.35em;
+                    align-self: flex-start;
+                }
+
+                .name {
+                    font-weight: 500;
+                }
+            }
+        }
+
+        .elevation-chart {
+            background-image: linear-gradient(to top, color.get(intrinsic-inverted, 0.5), transparent);
+        }
+
+        .elevation-chart + .entrants-wrap > table.entrants {
+            margin-top: 0;
+        }
+
+        table.entrants {
+            width: 100%;
+            margin-top: 0.68em;
+            border-radius: 0.3em;
+            overflow: hidden;
+            font-size: 0.9em;
+
+            img.nation-flag {
+                display: inline-block;
+                height: 1.3em;
+                margin-bottom: -0.36em;
+            }
+
+            > tbody > tr.summary.self:not(.expanded) {
+                clip-path: xywh(0 0 100% 100% round 0.5em); // tr border-radius
+                background-image: linear-gradient(to bottom, // must be vertical heading for Safari
+                    color.shade(primary, -30%, 0.9),
+                    color.shade(primary, -40%, 0.8));
+
+                td {
+                    padding-top: 0.65em;
+                    padding-bottom: 0.65em;
+                }
+
+                &:hover {
+                    background-image: linear-gradient(to bottom, // must be vertical heading for Safari
+                        color.shade(primary, -22%, 0.9),
+                        color.shade(primary, -32%, 0.8));
+                }
+            }
+
+            > thead > tr {
+                background-color: #0003;
+
+                th.icon {
+                    padding: 0;
+                }
+            }
+
+            > tbody > tr > td,
+            > thead > tr > th {
+                ms svg {
+                    width: 1.1em;
+                    opacity: 0.88;
+                    vertical-align: middle;
+                }
+            }
+
+            > tbody > tr.summary {
+                &.invalid {
+                    opacity: 0.7;
+                    font-weight: 200 !important;
+                }
+
+                > td {
+                    // NOTE: the hacks below use pct which seems to be a pct of remaining available width
+                    // It should be carefully balanced with the size of other non max-width-hacked cols.
+                    &.name {
+                        max-width: 0; // hack to enable container % width
+                        width: 30%; // must be coupled with max-width:0
+                    }
+                    &.team {
+                        max-width: 0; // hack to enable container % width
+                        width: 10%; // must be coupled with max-width:0
+                    }
+                    // end hack
+
+                    &.racing-score {
+                        .positive,
+                        .negative {
+                            font-weight: 550;
+                            font-size: 0.76em;
+                            // surprisingly this prefix is supported on all browsers
+                            -webkit-text-stroke-width: 0.02em;
+                        }
+
+                        .positive {
+                            -webkit-text-stroke-color: color.get(positive);
+                        }
+                        .negative {
+                            -webkit-text-stroke-color: color.get(negative);
+                        }
+                    }
+
+                    &.icons {
+                        color: inherit;
+
+                        ms {
+                            font-size: 1.3em;
+                            font-weight: 600;
+                            line-height: 0.7;
+                            filter: drop-shadow(0 0 1px black);
+                        }
+
+                        .flag {
+                            color: #f32d24;
+                        }
+
+                        .warning {
+                            color: #ffe200;
+                        }
+                    }
+
+                    &.power {
+                        &[data-power-type="VIRTUAL_POWER"] {
+                            text-decoration: line-through;
+                            text-decoration-color: darkred;
+                        }
+                    }
+                }
+            }
+
+
+            &.signups {
+                > tbody > tr.summary {
+                    > td {
+                        &.name {
+                            text-align: left;
+                        }
+                    }
+                }
+            }
+
+            &.results {
+                > thead > tr > th.time,
+                > tbody > tr > td.time,
+                > thead > tr > th.distance,
+                > tbody > tr > td.distance {
+                    text-align: right;
+                }
+
+                > tbody > tr.summary {
+                    > td {
+                        &.time,
+                        &.distance {
+                            &.relative {
+                                font-size: 0.8em;
+                            }
+                        }
+
+                        &.place {
+                            text-align: center;
+                        }
+                    }
+                }
+            }
+
+            td.icon {
+                padding: 0.1em;
+                width: 0;
+                text-align: center;
+
+                ms {
+                    font-size: 1.2em;
+
+                    &.female {
+                        font-size: 1.4em;
+                        margin-left: -0.15em;
+                        margin-right: -0.15em;
+                    }
+
+                    .danger {
+                        color: color.get(danger);
+                    }
+                }
+            }
+
+            td.team .badge {
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            ms.in-game { }
+            ms.power { color: gold; }
+            ms.female { color: #eb09eb; }
+            ms.following { color: color.get(following); }
+            ms.marked { color: color.get(marked); }
+
+            ms svg {
+                height: 1em;
+            }
+
+            .details {
+                > td {
+                    padding: 0;
+                }
+
+                .container {
+                    background-color: transparent;
+                    padding: 0;
+                }
+            }
+
+            localized .milliseconds {
+                font-size: 0.7em;
+            }
+        }
+    }
+
+    .card {
+        width: clamp(50%, 400px, 100%);
+        margin-left: 0.5em;
+        margin-bottom: 0.5em;
+        border-radius: 0.5em;
+        background: #1117;
+        overflow: hidden;
+
+        img.event-image {
+            width: 100%;
+        }
+
+        .meta,
+        .elevation-chart {
+            // Fix for .desc flow breaking pointer events..
+            position: relative;
+            z-index: 1;
+        }
+
+        .meta {
+            padding: 0.4em;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+
+            &:not(:last-child) {
+                padding-bottom: 0;
+            }
+
+            ms {
+                opacity: 0.8;
+            }
+
+            > * {
+                padding: 0.2em;
+            }
+
+            a img {
+                height: 1.5em;
+            }
+        }
+    }
+}
+
+.details .container .profile {
+    .avatar {
+        flex-basis: 190px;
+    }
+
+    header.title {
+        display: contents;
+        background: none;
+        color: #f0f0f0;
+
+        .buttons {
+            margin: 0.2em 0.5em;
+            padding: 0;
+            border-radius: 0.28em;
+            overflow: hidden;
+            background-color: color.shade(intrinsic-inverted, 5%, 0.7);
+            color: color.get(intrinsic);
+
+            > a {
+                height: 1.65em;
+                flex: 1 1 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0;
+                text-decoration: none;
+
+                &:not([disabled]):hover {
+                    background-color: color.shade(intrinsic-inverted, 0%, 0.8);
+                }
+            }
+        }
+
+        .name {
+            display: none;
+        }
+    }
+}
+
+@container root-html (max-width: 768px)  {
+    .elevation-chart {
+        pointer-events: none;
+    }
+
+    table.events {
+        table-layout: fixed;
+
+        > thead:not(.loader) {
+            display: none;
+        }
+
+        > tbody > tr {
+            --row-padding: 0.5rem;
+            --cell-padding: 0.3rem;
+            --safe-width: calc(100vw - var(--scrollbar-size) - 1px); // 1px cause i'm paranoid of overflow-x bars
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            width: var(--safe-width);
+
+            > td {
+                display: block; // Better than flex since we have a lot of raw text nodes
+                max-width: 100%;
+
+                &.name {
+                    max-width: none;
+                    width: calc(var(--safe-width) - (var(--cell-padding) * 2 + var(--row-padding) * 2));
+                }
+                &.route {
+                    max-width: none;
+                    width: calc(0.5 * var(--safe-width) - (var(--cell-padding) * 2 + var(--row-padding) * 2));
+                }
+                &.groups {
+                    width: calc(0.5 * var(--safe-width) - (var(--cell-padding) * 2 + var(--row-padding) * 2));
+                }
+            }
+
+            &.summary {
+                padding: var(--row-padding) var(--cell-padding);
+
+                > td {
+                    padding: 0 var(--cell-padding) !important;
+                }
+            }
+        }
+
+        .subgroups {
+            .event-subgroup {
+                padding: 0;
+
+                > header {
+                    padding-left: 0.5em;
+                    padding-right: 0.5em;
+                    padding-bottom: 0.5em;
+                    position: relative;
+
+                    .label {
+                        width: 100%;
+                        padding-bottom: 0.3em;
+                    }
+
+                    .name {
+                        padding-top: 0.1em;
+                        width: 100%;
+                        max-width: 100%;
+                    }
+
+                    .expand-collapse {
+                        position: absolute;
+                        top: 0;
+                        right: 0;
+                        font-size: 1.1em;
+                        padding: 0.4em;
+                    }
+                }
+
+                table.entrants {
+                    table-layout: fixed;
+                    margin-top: 0;
+
+                    > thead {
+                        display: none;
+                    }
+
+                    > tbody > tr {
+                        display: flex;
+                        flex-wrap: wrap;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 0 0.4em;
+
+                        &.summary > td {
+                            --name-width: 55%;
+                            --row-padding: 0.7em;
+                            font-variant-numeric: normal;
+                            padding: var(--row-padding) var(--cell-padding);
+
+                            &:empty {
+                                padding: 0;
+                            }
+
+                            &.relative {
+                                font-size: 1em;
+                            }
+
+                            &[data-small-header] {
+                                position: relative;
+
+                                &::before {
+                                    position: absolute;
+                                    margin-top: -0.88em;
+                                    font-size: 0.6em;
+                                    font-weight: 600;
+                                    opacity: 0.7;
+                                    content: attr(data-small-header);
+                                }
+                            }
+
+                            &.name,
+                            &.team {
+                                padding-top: 0.5em;
+                                padding-bottom: 0;
+                                max-width: none;
+                            }
+
+                            &.name {
+                                order: -2;
+                                width: var(--name-width);
+                            }
+
+                            &.team {
+                                order: -1;
+                                width: calc(100% - var(--name-width) - var(--place-width));
+                                text-align: right;
+                            }
+
+                            &.icon {
+                                width: auto;
+                                order: 100;
+
+                                &:empty {
+                                    display: none;
+                                }
+                            }
+
+                            &.icons {
+                                order: 200;
+                            }
+                        }
+                    }
+
+                    &.signups {
+                        --place-width: 0rem;
+
+                        > tbody > tr.summary > td {
+                            &.power {
+                                min-width: 6ch;
+                            }
+
+                            &.weight {
+                                flex: 1;
+                            }
+                        }
+                    }
+
+                    &.results {
+                        --place-width: 2.6rem;
+
+                        > tbody > tr.summary > td {
+                            &.place {
+                                order: -3;
+                                text-align: left;
+                                font-weight: 600;
+                                font-size: 1em;
+                                width: var(--place-width);
+                                margin-bottom: -0.4em;
+                                overflow: visible;
+                            }
+
+                            &.racing-score,
+                            &.time, // or distance
+                            &.distance, // or time
+                            &.power {
+                                width: 33.3%;
+                            }
+
+                            &.power {
+                                text-align: right;
+                            }
+
+                            &.crit-power,
+                            &.hr,
+                            &.weight {
+                                min-width: 3ch;
+                                font-size: 0.88em;
+                            }
+
+                            abbr.unit {
+                                font-stretch: 90%;
+                                font-size: 0.7em;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@keyframes pulse-color {
+    from {
+        filter: brightness(100%);
+    }
+
+    50% {
+        filter: brightness(60%);
+    }
+
+    to {
+        filter: brightness(100%);
+    }
+}
