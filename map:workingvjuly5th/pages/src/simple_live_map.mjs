@@ -24,23 +24,6 @@ common.settingsStore.setDefault({
 const settings = common.settingsStore.get();
 
 /**
- * Quality scale - same as geo.mjs
- */
-function qualityScale(raw) {
-    raw = raw || 1;
-    const min = 0.2;
-    return Math.min(2, (raw / 100) * (1 - min) + min);
-}
-
-/**
- * Get setting with fallback - same as geo.mjs
- */
-function getSetting(key, def) {
-    const v = settings[key];
-    return v === undefined ? def : v;
-}
-
-/**
  * Show notifications
  */
 function showNotification(message, type = 'info') {
