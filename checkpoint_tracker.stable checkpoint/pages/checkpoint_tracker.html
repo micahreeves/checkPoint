@@ -27,8 +27,6 @@
                 <div class="title">Simple Map Viewer</div>
                 <div class="filler"></div>
                 <div class="buttons">
-                    <div class="button load-route" title="Load Route JSON">📁 Load Route</div>
-                    <div class="button clear-route" title="Clear Route">🗑️ Clear</div>
                     <a class="button" onClick="window.location.reload()" title="Reload">&#x21bb;</a>
                     <div title="Minimize" class="button minimize electron-only"><ms>minimize</ms></div>
                     <div title="Close this window" class="button close electron-only"><ms>close</ms></div>
@@ -37,45 +35,11 @@
         </div>
 
         <div id="content">
-            <div class="tracker-container">
-                <!-- Map container -->
-                <div class="map-container">
-                    <div class="map"></div>
-
-                    <!-- Map controls -->
-                    <div class="map-controls">
-                        <div class="button std icon icon-only toggle-auto-heading"
-                             title="Toggle heading rotation"><ms>explore</ms></div>
-                        <div class="button std icon icon-only toggle-auto-center active"
-                             title="Toggle automatic centering"><ms>my_location</ms></div>
-                        <div class="button std icon icon-only fit-route"
-                             title="Fit route to view"><ms>fit_screen</ms></div>
-                    </div>
-
-                    <!-- Status overlay -->
-                    <div class="status-overlay">
-                        <div class="route-info">
-                            <div class="route-name">No route loaded</div>
-                            <div class="route-stats">Click 📁 Load Route or drag & drop JSON file</div>
-                        </div>
-                    </div>
-
-                    <!-- Drag overlay for file drops -->
-                    <div class="drag-overlay hidden">
-                        <div>Drop JSON file here to load route</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Route notification area -->
-            <div class="route-notification" style="display: none;"></div>
+            <div class="map"></div>
         </div>
 
-        <!-- Hidden file input -->
-        <input type="file" id="route-file-input" accept=".json,application/json" style="display: none;"/>
-
         <div id="hintbar">
-            <div class="hint">Load route JSON files to visualize routes on the Zwift map</div>
+            <div class="hint">Simple Map Viewer</div>
         </div>
     </body>
 </html>
