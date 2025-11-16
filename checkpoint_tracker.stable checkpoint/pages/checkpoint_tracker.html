@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html tabindex="0" data-settings-key="checkpoint-tracker-settings-v1" class="passive-overlay-scrollbars">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval';"/>
+
+        <title>Checkpoint Tracker</title>
+
+        <script src="/pages/src/preloads.js"></script>
+
+        <link id="favicon" rel="shortcut icon" href="/images/favicon.png"/>
+        <link rel="stylesheet" href="/pages/css/common.css"/>
+        <link rel="stylesheet" href="/pages/css/geo.css"/>
+        <link rel="stylesheet" href="./css/checkpoint_tracker.css"/>
+
+        <script type="module">
+            import {main} from './src/checkpoint_tracker.mjs';
+            main();
+        </script>
+    </head>
+    <body class="transparent-bg">
+        <div id="titlebar">
+            <header>
+                <div class="logo"><img src="/pages/images/icon128.png"/></div>
+                <div class="title">Checkpoint Tracker</div>
+                <div class="filler"></div>
+                <div class="buttons">
+                    <div class="button load-route" title="Load Route JSON">📁</div>
+                    <div class="button toggle-checkpoints active" title="Toggle Checkpoints">📍</div>
+                    <a class="button" onClick="window.location.reload()" title="Reload">&#x21bb;</a>
+                    <div title="Minimize" class="button minimize electron-only"><ms>minimize</ms></div>
+                    <div title="Close this window" class="button close electron-only"><ms>close</ms></div>
+                </div>
+            </header>
+        </div>
+        
+        <div id="content">
+            <div class="tracker-container">
+                <!-- Map container -->
+                <div class="map-container">
+                    <div class="map"></div>
+                    
+                    <!-- Map controls -->
+                    <div class="map-controls">
+                        <div class="button std icon icon-only toggle-auto-heading"
+                             title="Toggle heading rotation"><ms>explore</ms></div>
+                        <div class="button std icon icon-only toggle-auto-center active"
+                             title="Toggle automatic centering"><ms>my_location</ms></div>
+                        <div class="button std icon icon-only fit-route"
+                             title="Fit route to view"><ms>fit_screen</ms></div>
+                    </div>
+                    
+                    <!-- Status overlay -->
+                    <div class="status-overlay">
+                        <div class="route-info">
+                            <div class="route-name">No route loaded</div>
+                            <div class="route-stats">Click 📁 to load route JSON or drag & drop files</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Drag overlay for file drops -->
+                    <div class="drag-overlay hidden">
+                        <div>Drop JSON file here to load route</div>
+                    </div>
+                </div>
+                
+                <!-- Checkpoint panel -->
+                <div class="checkpoint-panel">
+                    <div class="panel-header">
+                        <h3>Checkpoints</h3>
+                        <div class="checkpoint-controls">
+                            <button class="btn add-checkpoint" title="Add checkpoint at current athlete position">Add Current Position</button>
+                            <button class="btn clear-checkpoints" title="Clear all checkpoints and reset timing">Clear All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="checkpoint-list">
+                        <div class="checkpoint-placeholder">
+                            Load a route or add checkpoints manually
+                        </div>
+                    </div>
+                    
+                    <div class="timing-info">
+                        <div class="current-segment">
+                            <div class="segment-label">Current Segment:</div>
+                            <div class="segment-time">--:--</div>
+                        </div>
+                        <div class="total-time">
+                            <div class="time-label">Total Time:</div>
+                            <div class="time-value">--:--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Route notification area -->
+            <div class="route-notification" style="display: none;"></div>
+        </div>
+        
+        <!-- Hidden file input for loading JSON -->
+        <input type="file" id="route-file-input" accept=".json,application/json" style="display: none;"/>
+        
+        <div id="hintbar">
+            <div class="hint">Load a route JSON file, drag & drop, or manually add checkpoints. Live tracking shows progress automatically.</div>
+        </div>
+    </body>
+</html>
