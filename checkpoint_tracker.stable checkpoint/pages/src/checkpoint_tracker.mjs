@@ -148,21 +148,12 @@ function setupLiveTracking() {
 
     try {
         common.subscribe('states', async (states) => {
-            if (!states || !Array.isArray(states) || states.length === 0) return;
-
-            watchdog = performance.now();
-
             if (!inGame) {
-                inGame = true;
                 await initializeAthleteTracking();
             }
-
+            watchdog = performance.now();
             if (zwiftMap) {
-                try {
-                    await zwiftMap.renderAthleteStates(states);
-                } catch (error) {
-                    console.warn('Error rendering athlete states:', error);
-                }
+                zwiftMap.renderAthleteStates(states);
             }
         });
 
