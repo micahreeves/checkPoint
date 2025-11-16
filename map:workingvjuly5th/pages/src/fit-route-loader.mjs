@@ -278,9 +278,9 @@ export class FitRouteLoader {
                 zwiftX = (lng - meta.lonOffset) * meta.lonDegDist * 100;
                 zwiftY = -(lat - meta.latOffset) * meta.latDegDist * 100;
             } else {
-                // Standard conversion
+                // Standard conversion (matches Sauce built-in latlngToPosition)
                 zwiftX = (lng - meta.lonOffset) * meta.lonDegDist * 100;
-                zwiftY = (lat - meta.latOffset) * meta.latDegDist * 100;
+                zwiftY = -(lat - meta.latOffset) * meta.latDegDist * 100;
             }
 
             // Validate converted coordinates
