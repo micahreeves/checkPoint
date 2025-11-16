@@ -1,8 +1,8 @@
-// simple_live_map.mjs - REFACTORED to match geo.mjs pattern EXACTLY
-// Following Sauce's proven initialization sequence
+// simple_live_map.mjs - Using checkpoint tracker pattern EXACTLY
 
 import * as common from '/pages/src/common.mjs';
 import * as map from '/pages/src/map.mjs';
+import * as data from '/shared/sauce/data.mjs';
 import * as locale from '/shared/sauce/locale.mjs';
 
 // Global references (same as geo.mjs)
@@ -14,22 +14,11 @@ let fitCheckpoints = null;
 
 const H = locale.human;
 
-// Settings - match geo.mjs structure
+// Settings - EXACT same as checkpoint tracker
 common.settingsStore.setDefault({
-    mapStyle: 'default',
-    tiltShift: false,
-    tiltShiftAmount: 80,
-    sparkle: false,
-    transparency: 0,
-    quality: 50,
-    verticalOffset: 0,
-    fpsLimit: 30,
-    zoomPriorityTilt: true,
     autoCenter: true,
-    autoHeading: true,
-    showAthleteNames: true,
-    liveTracking: true,
-    showFitCheckpoints: true
+    autoHeading: false,
+    liveTracking: true
 });
 
 const settings = common.settingsStore.get();
