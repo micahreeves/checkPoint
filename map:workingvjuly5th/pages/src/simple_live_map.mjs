@@ -386,12 +386,12 @@ async function initializeAthleteTracking() {
 
         inGame = !!(ad && ad.age < 15000);
 
-        // IMPORTANT: Set course BEFORE setting athletes to ensure rotateCoordinates is initialized
-        // This matches geo.mjs behavior and prevents coordinate mismatch
-        if (ad?.state?.courseId && zwiftMap) {
-            console.log(`🗺️ Setting initial course: ${ad.state.courseId}`);
-            await zwiftMap.setCourse(ad.state.courseId);
-        }
+        // REMOVED: Course initialization - let Sauce handle it naturally like checkpoint_tracker does
+        // The premature setCourse() call was causing athlete misalignment
+        // if (ad?.state?.courseId && zwiftMap) {
+        //     console.log(`🗺️ Setting initial course: ${ad.state.courseId}`);
+        //     await zwiftMap.setCourse(ad.state.courseId);
+        // }
 
         if (ad?.athleteId) {
             athleteId = ad.athleteId;
@@ -418,9 +418,10 @@ async function initializeAthleteTracking() {
             console.warn('Could not get watching athlete data:', error);
         }
 
-        console.log('✅ Athlete tracking initialized', {
-            courseId: zwiftMap?.courseId,
-            rotateCoordinates: zwiftMap?.rotateCoordinates
+        console.log('✅ Athlete tracking initialized (course will be set naturally by Sauce)', {
+            athleteId,
+            watchingId,
+            inGame
         });
 
     } catch (error) {
