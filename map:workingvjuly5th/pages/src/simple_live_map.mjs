@@ -383,16 +383,23 @@ async function initializeAthleteTracking() {
         if (!ad) {
             ad = await common.rpc.getAthleteData('watching');
         }
-        
+
         inGame = !!(ad && ad.age < 15000);
-        
+
+        // IMPORTANT: Set course BEFORE setting athletes to ensure rotateCoordinates is initialized
+        // This matches geo.mjs behavior and prevents coordinate mismatch
+        if (ad?.state?.courseId && zwiftMap) {
+            console.log(`🗺️ Setting initial course: ${ad.state.courseId}`);
+            await zwiftMap.setCourse(ad.state.courseId);
+        }
+
         if (ad?.athleteId) {
             athleteId = ad.athleteId;
             if (zwiftMap) {
                 zwiftMap.setAthlete(athleteId);
             }
         }
-        
+
         // Get watching athlete
         try {
             const watchingData = await common.rpc.getAthleteData('watching');
@@ -410,9 +417,12 @@ async function initializeAthleteTracking() {
         } catch (error) {
             console.warn('Could not get watching athlete data:', error);
         }
-        
-        console.log('✅ Athlete tracking initialized');
-        
+
+        console.log('✅ Athlete tracking initialized', {
+            courseId: zwiftMap?.courseId,
+            rotateCoordinates: zwiftMap?.rotateCoordinates
+        });
+
     } catch (error) {
         console.error('❌ Error initializing athlete tracking:', error);
     }
