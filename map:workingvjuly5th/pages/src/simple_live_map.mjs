@@ -13,7 +13,6 @@ let watchingId;
 let watchdog;
 let inGame = false;
 let fitCheckpoints = null;
-let courseInitialized = false; // Track if we've set the initial course
 
 const H = locale.human;
 
@@ -387,9 +386,9 @@ async function initializeAthleteTracking() {
 
         inGame = !!(ad && ad.age < 15000);
 
-        // NOTE: Course initialization is deferred until first athlete states are received
-        // Setting course too early (during init) was causing athlete misalignment
-        // Now we set course in the states subscription based on actual athlete courseId
+        // NOTE: No manual setCourse() needed here!
+        // renderAthleteStates() automatically handles course changes based on
+        // the watching athlete's courseId (see map.mjs:1317-1319)
 
         if (ad?.athleteId) {
             athleteId = ad.athleteId;
@@ -416,7 +415,7 @@ async function initializeAthleteTracking() {
             console.warn('Could not get watching athlete data:', error);
         }
 
-        console.log('✅ Athlete tracking initialized (course will be set naturally by Sauce)', {
+        console.log('✅ Athlete tracking initialized (course auto-handled by renderAthleteStates)', {
             athleteId,
             watchingId,
             inGame
@@ -455,21 +454,9 @@ function setupLiveTracking() {
                 await initializeAthleteTracking();
             }
 
-            // Set course on first athlete state received (not during init to avoid misalignment)
-            if (!courseInitialized && zwiftMap && states.length > 0) {
-                const firstState = states.find(s => s?.state?.courseId);
-                if (firstState?.state?.courseId) {
-                    try {
-                        console.log(`🗺️ Setting course from first athlete state: ${firstState.state.courseId}`);
-                        await zwiftMap.setCourse(firstState.state.courseId);
-                        courseInitialized = true;
-                    } catch (error) {
-                        console.warn('❌ Error setting course from athlete state:', error);
-                    }
-                }
-            }
-
-            // Let Sauce handle all the positioning - no custom logic needed
+            // IMPORTANT: renderAthleteStates() AUTOMATICALLY handles setCourse()
+            // internally based on the watching athlete's courseId!
+            // No manual setCourse() needed - let Sauce handle it to avoid conflicts
             if (zwiftMap) {
                 try {
                     await zwiftMap.renderAthleteStates(states);
