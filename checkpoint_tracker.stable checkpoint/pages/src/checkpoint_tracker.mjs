@@ -10,6 +10,7 @@ import { parseRouteData, getWorldName, generateSampleRoute, WORLD_MAPPING } from
 import { convertCoordinates } from './coordinate-converter.mjs';
 import { CheckpointManager } from './checkpoint-manager.mjs';
 import { initializeReplay, loadReplayData, updateReplayProgress, handleLiveAthleteUpdate, integrateWithMainApp } from './replay-ui-integration.mjs';
+import { FitToMapAdapter, createComparisonTable } from './fit-to-map-adapter.mjs';
 
 // Global references
 let worldList;
@@ -20,6 +21,7 @@ let routeData = null;
 let currentRoute = null;
 let checkpointManager;
 let replayManager; // New: Ghost rider manager
+let fitAdapter; // New: FIT file adapter
 let watchdog;
 let inGame = false;
 
@@ -576,6 +578,188 @@ function setupFileLoading() {
 }
 
 /**
+ * 🆕 NEW: Setup FIT file loading
+ */
+function setupFitFileLoading() {
+    const fitFileInput = document.getElementById('fit-file-input');
+    const loadFitButton = document.querySelector('.load-fit');
+
+    if (!fitFileInput || !loadFitButton) {
+        console.warn('FIT file loading elements not found');
+        return;
+    }
+
+    loadFitButton.addEventListener('click', () => {
+        fitFileInput.click();
+    });
+
+    fitFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.fit')) {
+            showNotification('Please select a .fit file', 'error');
+            return;
+        }
+
+        try {
+            showNotification('📂 Parsing FIT file...', 'info');
+
+            // Parse FIT file
+            const routeData = await fitAdapter.parseFitFile(file);
+
+            // Store attempt for comparison
+            const attemptId = fitAdapter.storeAttempt(routeData);
+
+            console.log(`✅ FIT file loaded: ${routeData.name}`);
+            console.log(`   Attempt ID: ${attemptId}`);
+            console.log(`   Checkpoints: ${routeData.checkpoints.length}`);
+            console.log(`   Distance: ${(routeData.metadata.totalDistance / 1000).toFixed(2)} km`);
+            console.log(`   Time: ${H.duration(routeData.metadata.totalTime)}`);
+
+            // Load the route onto the map
+            await loadRoute(routeData);
+
+            // Update comparison panel dropdowns
+            updateAttemptSelectors();
+
+            showNotification(
+                `✅ FIT file loaded: ${routeData.checkpoints.length} checkpoints, ` +
+                `${(routeData.metadata.totalDistance / 1000).toFixed(2)}km, ` +
+                `${H.duration(routeData.metadata.totalTime)}`,
+                'success'
+            );
+
+        } catch (error) {
+            console.error('Error loading FIT file:', error);
+            showNotification('Error loading FIT file: ' + error.message, 'error');
+        }
+
+        fitFileInput.value = '';
+    });
+
+    console.log('📂 FIT file loading setup complete');
+}
+
+/**
+ * 🆕 NEW: Setup comparison panel
+ */
+function setupComparisonPanel() {
+    const toggleBtn = document.querySelector('.toggle-comparison');
+    const panel = document.querySelector('.comparison-panel');
+    const closeBtn = document.querySelector('.close-comparison');
+    const compareBtn = document.querySelector('.compare-btn');
+
+    if (!toggleBtn || !panel) {
+        console.warn('Comparison panel elements not found');
+        return;
+    }
+
+    // Toggle panel visibility
+    toggleBtn.addEventListener('click', () => {
+        const isVisible = panel.style.display !== 'none';
+        panel.style.display = isVisible ? 'none' : 'flex';
+        toggleBtn.classList.toggle('active', !isVisible);
+    });
+
+    // Close button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            panel.style.display = 'none';
+            toggleBtn.classList.remove('active');
+        });
+    }
+
+    // Compare button
+    if (compareBtn) {
+        compareBtn.addEventListener('click', () => {
+            performComparison();
+        });
+    }
+
+    console.log('📊 Comparison panel setup complete');
+}
+
+/**
+ * 🆕 NEW: Update attempt selector dropdowns
+ */
+function updateAttemptSelectors() {
+    const select1 = document.getElementById('attempt1-select');
+    const select2 = document.getElementById('attempt2-select');
+
+    if (!select1 || !select2 || !fitAdapter) return;
+
+    const attempts = fitAdapter.getAllAttempts();
+
+    // Clear existing options (except first)
+    while (select1.options.length > 1) select1.remove(1);
+    while (select2.options.length > 1) select2.remove(1);
+
+    // Add attempt options
+    attempts.forEach(attempt => {
+        const option1 = new Option(
+            `${attempt.name} - ${H.duration(attempt.metadata.totalTime)}`,
+            attempt.id
+        );
+        const option2 = new Option(
+            `${attempt.name} - ${H.duration(attempt.metadata.totalTime)}`,
+            attempt.id
+        );
+
+        select1.add(option1);
+        select2.add(option2);
+    });
+}
+
+/**
+ * 🆕 NEW: Perform time comparison
+ */
+function performComparison() {
+    const select1 = document.getElementById('attempt1-select');
+    const select2 = document.getElementById('attempt2-select');
+    const resultsDiv = document.querySelector('.comparison-results');
+
+    if (!select1 || !select2 || !resultsDiv || !fitAdapter) return;
+
+    const attempt1Id = select1.value;
+    const attempt2Id = select2.value;
+
+    if (!attempt1Id || !attempt2Id) {
+        showNotification('Please select two attempts to compare', 'error');
+        return;
+    }
+
+    if (attempt1Id === attempt2Id) {
+        showNotification('Please select different attempts', 'error');
+        return;
+    }
+
+    try {
+        const comparison = fitAdapter.compareAttempts(attempt1Id, attempt2Id);
+        const attempt1 = fitAdapter.getAttempt(attempt1Id);
+        const attempt2 = fitAdapter.getAttempt(attempt2Id);
+
+        const comparisonHTML = createComparisonTable(
+            comparison,
+            attempt1.name,
+            attempt2.name
+        );
+
+        resultsDiv.innerHTML = comparisonHTML;
+
+        console.log('📊 Comparison complete:', {
+            attempt1: attempt1.name,
+            attempt2: attempt2.name,
+            checkpoints: comparison.length
+        });
+
+    } catch (error) {
+        console.error('Error comparing attempts:', error);
+        showNotification('Error comparing attempts: ' + error.message, 'error');
+    }
+}
+
+/**
  * Setup map controls
  */
 function setupMapControls() {
@@ -914,20 +1098,26 @@ async function initialize() {
                 console.warn('Failed to initialize Ghost Rider:', error);
             }
         }
-        
+
+        // 🆕 NEW: Initialize FIT file adapter
+        fitAdapter = new FitToMapAdapter();
+        console.log('📂 FIT file adapter initialized');
+
         // Initialize athlete tracking
         await initializeAthleteTracking();
-        
+
         // Setup all the UI controls
         setupFileLoading();
+        setupFitFileLoading(); // 🆕 NEW: FIT file support
         setupMapControls();
         setupCheckpointControls();
+        setupComparisonPanel(); // 🆕 NEW: Comparison panel
         
         // Setup live tracking
         setupLiveTracking();
         
         // Initial UI update
-        updateRouteInfo('No route loaded', 'Click 📁 to load route JSON or drag & drop');
+        updateRouteInfo('No route loaded', '📂 Upload .fit file or 📁 load route JSON');
         updateCheckpointList();
         updateTimingInfo();
         

@@ -9,6 +9,7 @@
         <title>Checkpoint Tracker</title>
 
         <script src="/pages/src/preloads.js"></script>
+        <script src="./src/fit.parser.entry.js"></script>
 
         <link id="favicon" rel="shortcut icon" href="/images/favicon.png"/>
         <link rel="stylesheet" href="/pages/css/common.css"/>
@@ -27,8 +28,10 @@
                 <div class="title">Checkpoint Tracker</div>
                 <div class="filler"></div>
                 <div class="buttons">
+                    <div class="button load-fit" title="Upload FIT File">📂</div>
                     <div class="button load-route" title="Load Route JSON">📁</div>
                     <div class="button toggle-checkpoints active" title="Toggle Checkpoints">📍</div>
+                    <div class="button toggle-comparison" title="Toggle Comparison Panel">📊</div>
                     <a class="button" onClick="window.location.reload()" title="Reload">&#x21bb;</a>
                     <div title="Minimize" class="button minimize electron-only"><ms>minimize</ms></div>
                     <div title="Close this window" class="button close electron-only"><ms>close</ms></div>
@@ -75,13 +78,13 @@
                             <button class="btn clear-checkpoints" title="Clear all checkpoints and reset timing">Clear All</button>
                         </div>
                     </div>
-                    
+
                     <div class="checkpoint-list">
                         <div class="checkpoint-placeholder">
-                            Load a route or add checkpoints manually
+                            Upload a .fit file or load route JSON
                         </div>
                     </div>
-                    
+
                     <div class="timing-info">
                         <div class="current-segment">
                             <div class="segment-label">Current Segment:</div>
@@ -93,17 +96,46 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Comparison panel (hidden by default) -->
+                <div class="comparison-panel" style="display: none;">
+                    <div class="panel-header">
+                        <h3>Time Comparison</h3>
+                        <button class="btn close-comparison">×</button>
+                    </div>
+
+                    <div class="attempt-selector">
+                        <div class="selector-group">
+                            <label>Attempt 1:</label>
+                            <select id="attempt1-select">
+                                <option value="">Select attempt...</option>
+                            </select>
+                        </div>
+                        <div class="selector-group">
+                            <label>Attempt 2:</label>
+                            <select id="attempt2-select">
+                                <option value="">Select attempt...</option>
+                            </select>
+                        </div>
+                        <button class="btn compare-btn">Compare</button>
+                    </div>
+
+                    <div class="comparison-results">
+                        <!-- Comparison table will be inserted here -->
+                    </div>
+                </div>
             </div>
             
             <!-- Route notification area -->
             <div class="route-notification" style="display: none;"></div>
         </div>
         
-        <!-- Hidden file input for loading JSON -->
+        <!-- Hidden file inputs -->
+        <input type="file" id="fit-file-input" accept=".fit" style="display: none;"/>
         <input type="file" id="route-file-input" accept=".json,application/json" style="display: none;"/>
-        
+
         <div id="hintbar">
-            <div class="hint">Load a route JSON file, drag & drop, or manually add checkpoints. Live tracking shows progress automatically.</div>
+            <div class="hint">Upload .fit files to see checkpoint times, or load route JSON. Compare multiple attempts side-by-side.</div>
         </div>
     </body>
 </html>
