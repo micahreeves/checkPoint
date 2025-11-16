@@ -263,11 +263,28 @@ class SimpleFitCheckpoints {
         }
 
         console.log(`📍 Creating ${this.checkpoints.length} checkpoints...`);
+        console.log(`🔄 Map rotateCoordinates: ${zwiftMap.rotateCoordinates}`);
 
         for (const checkpoint of this.checkpoints) {
             try {
                 const [lat, lng] = checkpoint.coordinates;
-                const mapCoords = zwiftMap.latlngToPosition([lat, lng]);
+
+                // Convert GPS to Zwift world coordinates
+                let mapCoords = zwiftMap.latlngToPosition([lat, lng]);
+
+                // CRITICAL: latlngToPosition returns coordinates in "path space"
+                // But entities are in a separate non-rotated layer!
+                // When rotateCoordinates is true, paths get rotated -90deg via CSS
+                // but entities don't, so we need to un-rotate the coordinates
+                if (zwiftMap.rotateCoordinates) {
+                    // Un-rotate: reverse the -90deg rotation that paths get
+                    // If paths use rotate(-90deg), entities need the opposite rotation
+                    // Original: [x, y] -> After path rotation: [y, -x]
+                    // So for entities to match: we need to apply inverse: [-y, x]
+                    mapCoords = [-mapCoords[1], mapCoords[0]];
+                    console.log(`🔄 Applied un-rotation for checkpoint at ${checkpoint.distanceKm}km`);
+                }
+
                 const entity = zwiftMap.addPoint(mapCoords, 'checkpoint');
 
                 if (entity?.el) {
