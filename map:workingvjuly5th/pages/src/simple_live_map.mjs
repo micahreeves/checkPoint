@@ -13,6 +13,7 @@ let watchingId;
 let watchdog;
 let inGame = false;
 let fitCheckpoints = null;
+let courseInitialized = false; // Track if we've set the initial course
 
 const H = locale.human;
 
@@ -386,12 +387,9 @@ async function initializeAthleteTracking() {
 
         inGame = !!(ad && ad.age < 15000);
 
-        // REMOVED: Course initialization - let Sauce handle it naturally like checkpoint_tracker does
-        // The premature setCourse() call was causing athlete misalignment
-        // if (ad?.state?.courseId && zwiftMap) {
-        //     console.log(`🗺️ Setting initial course: ${ad.state.courseId}`);
-        //     await zwiftMap.setCourse(ad.state.courseId);
-        // }
+        // NOTE: Course initialization is deferred until first athlete states are received
+        // Setting course too early (during init) was causing athlete misalignment
+        // Now we set course in the states subscription based on actual athlete courseId
 
         if (ad?.athleteId) {
             athleteId = ad.athleteId;
@@ -448,15 +446,29 @@ function setupLiveTracking() {
         // Standard Sauce subscription pattern
         common.subscribe('states', async (states) => {
             if (!states?.length) return;
-            
+
             watchdog = performance.now();
-            
+
             if (!inGame) {
                 inGame = true;
                 console.log('🎮 Game connection established');
                 await initializeAthleteTracking();
             }
-            
+
+            // Set course on first athlete state received (not during init to avoid misalignment)
+            if (!courseInitialized && zwiftMap && states.length > 0) {
+                const firstState = states.find(s => s?.state?.courseId);
+                if (firstState?.state?.courseId) {
+                    try {
+                        console.log(`🗺️ Setting course from first athlete state: ${firstState.state.courseId}`);
+                        await zwiftMap.setCourse(firstState.state.courseId);
+                        courseInitialized = true;
+                    } catch (error) {
+                        console.warn('❌ Error setting course from athlete state:', error);
+                    }
+                }
+            }
+
             // Let Sauce handle all the positioning - no custom logic needed
             if (zwiftMap) {
                 try {
