@@ -873,7 +873,6 @@ export class CheckpointManager {
 
             // Apply inline styles using setProperty for maximum priority
             const el = entity.el;
-            el.style.setProperty('position', 'relative', 'important');  // Needed for absolute child positioning
             el.style.setProperty('width', '20px', 'important');
             el.style.setProperty('height', '20px', 'important');
             el.style.setProperty('min-width', '20px', 'important');
