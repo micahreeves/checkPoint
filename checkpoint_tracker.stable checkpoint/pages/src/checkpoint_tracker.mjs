@@ -7,7 +7,7 @@ import * as locale from '/shared/sauce/locale.mjs';
 
 // Import our enhanced modules
 import { parseRouteData, parseFitFile, getWorldName, generateSampleRoute, WORLD_MAPPING } from './route-parser.mjs';
-import { convertCoordinates } from './coordinate-converter.mjs';
+import { convertCoordinates, findWorldMeta } from './coordinate-converter.mjs';
 import { CheckpointManager } from './checkpoint-manager.mjs';
 import { initializeReplay, loadReplayData, updateReplayProgress, handleLiveAthleteUpdate, integrateWithMainApp } from './replay-ui-integration.mjs';
 
@@ -127,10 +127,13 @@ async function loadRoute(jsonData) {
             }
         }
 
-        // Convert coordinates (now using world from Zwift session if available)
+        // Find worldMeta from worldList for coordinate conversion
+        const worldMeta = findWorldMeta(worldList, parsedRouteData.courseId, parsedRouteData.worldId);
+
+        // Convert coordinates using worldMeta (has latOffset, lonOffset, latDegDist, lonDegDist from Sauce)
         let coordinates;
         try {
-            coordinates = convertCoordinates(parsedRouteData.coordinates, parsedRouteData.worldId, parsedRouteData.courseId, settings);
+            coordinates = convertCoordinates(parsedRouteData.coordinates, worldMeta, settings);
             console.log(`Converted ${coordinates.length} coordinates`);
 
             if (coordinates.length === 0) {
