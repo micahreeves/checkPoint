@@ -862,16 +862,52 @@ export class CheckpointManager {
             entity.el.dataset.checkpointId = checkpoint.id;
             entity.el.classList.add('checkpoint-marker', checkpoint.type);
 
-            // Set color based on type
+            // Get color based on type
             const color = CHECKPOINT_COLORS[checkpoint.type] || CHECKPOINT_COLORS.checkpoint;
-            entity.el.style.setProperty('--checkpoint-color', color);
+
+            // Apply inline styles directly to override any Sauce defaults
+            const el = entity.el;
+            el.style.cssText = `
+                width: 20px !important;
+                height: 20px !important;
+                min-width: 20px !important;
+                min-height: 20px !important;
+                border-radius: 50% !important;
+                background: ${color} !important;
+                background-color: ${color} !important;
+                border: 3px solid white !important;
+                box-shadow: 0 0 12px ${color}80 !important;
+                margin-left: -10px !important;
+                margin-top: -10px !important;
+                overflow: visible !important;
+                z-index: 100 !important;
+            `;
 
             // Add time label if we have a target time from FIT file
             if (checkpoint.targetTime !== null && checkpoint.targetTime !== undefined) {
                 const timeLabel = document.createElement('div');
                 timeLabel.className = 'checkpoint-time-label';
                 timeLabel.textContent = H.timer(checkpoint.targetTime);
-                entity.el.appendChild(timeLabel);
+                // Apply inline styles to time label too
+                timeLabel.style.cssText = `
+                    position: absolute !important;
+                    bottom: calc(100% + 8px) !important;
+                    left: 50% !important;
+                    transform: translateX(-50%) !important;
+                    background: rgba(0, 0, 0, 0.9) !important;
+                    color: white !important;
+                    font-size: 11px !important;
+                    font-family: monospace !important;
+                    font-weight: 600 !important;
+                    padding: 4px 8px !important;
+                    border-radius: 4px !important;
+                    white-space: nowrap !important;
+                    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7) !important;
+                    z-index: 200 !important;
+                    pointer-events: none !important;
+                `;
+                el.appendChild(timeLabel);
             }
 
             checkpoint.mapEntity = entity;
