@@ -186,10 +186,27 @@ async function loadRoute(jsonData) {
             }
         }
         
-        // Load checkpoints
+        // Load checkpoints (convert coordinates to Zwift format first)
         if (routeData.checkpoints && Array.isArray(routeData.checkpoints) && routeData.checkpoints.length > 0) {
             try {
-                await checkpointManager.loadCheckpointsFromData(routeData.checkpoints, routeData);
+                // Convert checkpoint coordinates from GPS to Zwift format
+                const convertedCheckpoints = routeData.checkpoints.map((cp, index) => {
+                    if (cp.coordinates && Array.isArray(cp.coordinates)) {
+                        // Use the checkpoint's index to get the already-converted coordinate
+                        // This ensures checkpoints align with the converted route
+                        const convertedCoord = cp.index !== undefined && coordinates[cp.index]
+                            ? coordinates[cp.index]
+                            : convertCoordinates([cp.coordinates], worldMeta, settings)[0];
+
+                        return {
+                            ...cp,
+                            coordinates: convertedCoord || cp.coordinates
+                        };
+                    }
+                    return cp;
+                });
+
+                await checkpointManager.loadCheckpointsFromData(convertedCheckpoints, routeData);
                 updateCheckpointList();
                 initializeProgressBar(); // Initialize progress bar with checkpoint markers
             } catch (error) {
