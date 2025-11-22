@@ -866,6 +866,14 @@ export class CheckpointManager {
             const color = CHECKPOINT_COLORS[checkpoint.type] || CHECKPOINT_COLORS.checkpoint;
             entity.el.style.setProperty('--checkpoint-color', color);
 
+            // Add time label if we have a target time from FIT file
+            if (checkpoint.targetTime !== null && checkpoint.targetTime !== undefined) {
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'checkpoint-time-label';
+                timeLabel.textContent = H.timer(checkpoint.targetTime);
+                entity.el.appendChild(timeLabel);
+            }
+
             checkpoint.mapEntity = entity;
 
             if (!this.settings.showCheckpoints) {
