@@ -552,28 +552,32 @@
    ============================================ */
 
 /* Override default entity styles for checkpoint markers */
-.entities .entity.checkpoint-marker {
-    position: absolute;
+.entities .entity.checkpoint-marker,
+.entities .entity.checkpoint-marker.checkpoint {
+    position: absolute !important;
     width: 18px !important;
     height: 18px !important;
     min-width: 18px !important;
     min-height: 18px !important;
-    margin-left: -9px;
-    margin-top: -9px;
+    max-width: 18px !important;
+    max-height: 18px !important;
+    margin-left: -9px !important;
+    margin-top: -9px !important;
     border-radius: 50% !important;
-    background-color: var(--checkpoint-color, #ffffff) !important;
+    background-color: #ffffff !important;
     background-image: none !important;
+    background: #ffffff !important;
     border: 3px solid white !important;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
-    z-index: 100;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.6) !important;
+    z-index: 100 !important;
     transition: all 0.2s ease;
     cursor: pointer;
-    /* Reset any default entity styles */
+    /* Reset ALL default entity styles */
     padding: 0 !important;
-    font-size: 0 !important;
-    line-height: 0 !important;
-    text-indent: -9999px;
     overflow: visible !important;
+    font-size: 0 !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
 }
 
 /* Hide any inner content like ms icons, but NOT the time label */
@@ -581,25 +585,25 @@
     display: none !important;
 }
 
-/* Time label on checkpoint markers */
+/* Time label on checkpoint markers - positioned ABOVE the marker */
 .entities .entity.checkpoint-marker .checkpoint-time-label {
     display: block !important;
     position: absolute;
-    top: -24px;
+    bottom: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.9);
     color: #fff;
     font-size: 11px !important;
     font-family: monospace;
     font-weight: 600;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
     white-space: nowrap;
-    text-indent: 0;
+    text-indent: 0 !important;
     line-height: normal !important;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
     z-index: 200;
     pointer-events: none;
 }
@@ -623,23 +627,23 @@
 }
 
 .entities .entity.checkpoint-marker.start {
-    background-color: #00ff00;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+    background-color: #00ff00 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.8) !important;
 }
 
 .entities .entity.checkpoint-marker.finish {
-    background-color: #ff0000;
-    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+    background-color: #ff0000 !important;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8) !important;
 }
 
 .entities .entity.checkpoint-marker.split {
-    background-color: #ffaa00;
-    box-shadow: 0 0 12px rgba(255, 170, 0, 0.7);
+    background-color: #ffaa00 !important;
+    box-shadow: 0 0 12px rgba(255, 170, 0, 0.7) !important;
 }
 
 .entities .entity.checkpoint-marker.lap {
-    background-color: #00aaff;
-    box-shadow: 0 0 12px rgba(0, 170, 255, 0.7);
+    background-color: #00aaff !important;
+    box-shadow: 0 0 12px rgba(0, 170, 255, 0.7) !important;
 }
 
 .entities .entity.checkpoint-marker.active {
