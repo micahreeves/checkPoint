@@ -208,7 +208,6 @@ async function loadRoute(jsonData) {
 
                 await checkpointManager.loadCheckpointsFromData(convertedCheckpoints, routeData);
                 updateCheckpointList();
-                initializeProgressBar(); // Initialize progress bar with checkpoint markers
             } catch (error) {
                 console.warn('Failed to load checkpoints:', error);
                 showNotification('Route loaded but checkpoints failed: ' + error.message, 'info');
@@ -216,7 +215,6 @@ async function loadRoute(jsonData) {
         } else {
             // Still initialize route for progress tracking even without checkpoints
             checkpointManager.initializeWithRoute(routeData);
-            initializeProgressBar();
         }
         
         // 🆕 NEW: Load replay data for Ghost Rider
@@ -506,7 +504,6 @@ function updateCheckpointList() {
                 const deleted = checkpointManager.deleteCheckpoint(checkpointId);
                 if (deleted) {
                     updateCheckpointList();
-                    initializeProgressBar(); // Refresh progress bar
                     showNotification(`Deleted checkpoint: ${deleted.name}`, 'info');
                 }
             }
@@ -536,79 +533,6 @@ function updateTimingInfo() {
     }
 }
 
-/**
- * Update progress bar display
- */
-function updateProgressBar(progress = 0, distance = 0) {
-    const container = document.querySelector('.progress-bar-container');
-    if (!container) return;
-
-    // Show progress bar if we have route data
-    if (routeData && routeData.coordinates && routeData.coordinates.length > 0) {
-        container.style.display = 'flex';
-    } else {
-        container.style.display = 'none';
-        return;
-    }
-
-    const totalDistance = checkpointManager?.curvePath?.totalDistance || 0;
-    const progressPercent = Math.min(progress * 100, 100);
-
-    // Update fill bar
-    const fillEl = container.querySelector('.progress-bar-fill');
-    if (fillEl) {
-        fillEl.style.width = `${progressPercent}%`;
-    }
-
-    // Update athlete marker
-    const markerEl = container.querySelector('.progress-athlete-marker');
-    if (markerEl) {
-        markerEl.style.left = `${progressPercent}%`;
-    }
-
-    // Update header info
-    const distanceEl = container.querySelector('.progress-distance');
-    const percentEl = container.querySelector('.progress-percent');
-    const remainingEl = container.querySelector('.progress-remaining');
-
-    if (distanceEl) {
-        distanceEl.textContent = H.distance(distance, { suffix: true });
-    }
-    if (percentEl) {
-        percentEl.textContent = `${progressPercent.toFixed(1)}%`;
-    }
-    if (remainingEl && totalDistance > 0) {
-        const remaining = Math.max(0, totalDistance - distance);
-        remainingEl.textContent = `${H.distance(remaining, { suffix: true })} remaining`;
-    }
-}
-
-/**
- * Initialize progress bar with checkpoint markers
- */
-function initializeProgressBar() {
-    const container = document.querySelector('.progress-bar-container');
-    const checkpointsEl = container?.querySelector('.progress-bar-checkpoints');
-
-    if (!container || !checkpointsEl || !checkpointManager) return;
-
-    // Clear existing markers
-    checkpointsEl.innerHTML = '';
-
-    // Add markers for each checkpoint
-    const checkpoints = checkpointManager.checkpoints || [];
-    for (const cp of checkpoints) {
-        const progress = cp.progress || 0;
-        const marker = document.createElement('div');
-        marker.className = `progress-checkpoint-marker ${cp.type || ''} ${cp.completed ? 'completed' : ''}`;
-        marker.style.left = `${progress * 100}%`;
-        marker.title = `${cp.name} - ${H.distance(cp.distance, { suffix: true })}`;
-        checkpointsEl.appendChild(marker);
-    }
-
-    // Show the progress bar
-    container.style.display = 'flex';
-}
 
 /**
  * Check if a file is a supported route file
@@ -1091,9 +1015,6 @@ function setupLiveTracking() {
                         }
                         updateCheckpointList();
                     }
-
-                    // Update progress bar
-                    updateProgressBar(result.currentProgress, result.currentDistance);
 
                 } catch (error) {
                     console.warn('Error checking checkpoint progress:', error);
