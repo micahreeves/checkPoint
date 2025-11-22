@@ -1,4 +1,5 @@
 // route-parser.mjs - Enhanced Route Data Parser Module (COMPLETE FIXED VERSION)
+// Supports JSON and FIT file formats
 
 import * as locale from '/shared/sauce/locale.mjs';
 
@@ -381,6 +382,272 @@ export function getWorldName(worldId, courseId) {
     
     // Last resort
     return `Unknown World (ID: ${worldId || courseId || 'N/A'})`;
+}
+
+/**
+ * Parse FIT file data using the FitParser library
+ * @param {ArrayBuffer} arrayBuffer - The raw FIT file data
+ * @returns {Promise<Object>} Parsed route data in standard format
+ */
+export function parseFitFile(arrayBuffer) {
+    return new Promise((resolve, reject) => {
+        // Check if FitParser is available (loaded from fit.parser.entry.js)
+        if (typeof window.FitParser === 'undefined') {
+            reject(new Error('FitParser not loaded. Make sure fit.parser.entry.js is included.'));
+            return;
+        }
+
+        try {
+            const fitParser = new window.FitParser({
+                force: true,
+                speedUnit: 'km/h',
+                lengthUnit: 'm',
+                temperatureUnit: 'celsius',
+                elapsedRecordField: true,
+                mode: 'cascade'
+            });
+
+            fitParser.parse(arrayBuffer, (error, data) => {
+                if (error) {
+                    reject(new Error(`FIT parse error: ${error.message || error}`));
+                    return;
+                }
+
+                if (!data) {
+                    reject(new Error('FIT parser returned no data'));
+                    return;
+                }
+
+                console.log('FIT file parsed successfully:', {
+                    hasRecords: !!(data.records && data.records.length),
+                    recordCount: data.records?.length || 0,
+                    hasSessions: !!(data.sessions && data.sessions.length),
+                    hasLaps: !!(data.laps && data.laps.length)
+                });
+
+                try {
+                    const routeData = convertFitToRouteData(data);
+                    resolve(routeData);
+                } catch (convError) {
+                    reject(new Error(`FIT conversion error: ${convError.message}`));
+                }
+            });
+        } catch (error) {
+            reject(new Error(`FIT parser initialization error: ${error.message}`));
+        }
+    });
+}
+
+/**
+ * Convert parsed FIT data to our standard route data format
+ * @param {Object} fitData - Parsed FIT data from FitParser
+ * @returns {Object} Route data in standard format
+ */
+function convertFitToRouteData(fitData) {
+    const parseResult = {
+        coordinates: [],
+        name: 'FIT Activity',
+        checkpoints: [],
+        telemetry: null,
+        worldId: null,
+        courseId: null,
+        routeId: null,
+        metadata: {}
+    };
+
+    // Extract activity name from session if available
+    if (fitData.sessions && fitData.sessions.length > 0) {
+        const session = fitData.sessions[0];
+        if (session.sport) {
+            parseResult.name = `${session.sport} Activity`;
+        }
+
+        // Extract metadata from session
+        parseResult.metadata = {
+            sport: session.sport || null,
+            subSport: session.sub_sport || null,
+            startTime: session.start_time || null,
+            totalDistance: session.total_distance || null,
+            totalElapsedTime: session.total_elapsed_time || null,
+            totalMovingTime: session.total_moving_time || null,
+            totalAscent: session.total_ascent || null,
+            totalDescent: session.total_descent || null,
+            avgSpeed: session.avg_speed || null,
+            maxSpeed: session.max_speed || null,
+            avgPower: session.avg_power || null,
+            maxPower: session.max_power || null,
+            avgHeartRate: session.avg_heart_rate || null,
+            maxHeartRate: session.max_heart_rate || null,
+            avgCadence: session.avg_cadence || null,
+            maxCadence: session.max_cadence || null,
+            totalCalories: session.total_calories || null,
+            source: 'FIT file'
+        };
+    }
+
+    // Extract GPS coordinates and telemetry from records
+    if (fitData.records && fitData.records.length > 0) {
+        const records = fitData.records;
+
+        // Initialize telemetry arrays
+        const telemetry = {
+            distance: [],      // in cm (to match Zwift format)
+            altitude: [],      // in cm (to match Zwift format)
+            speed: [],         // in cm/sec (to match Zwift format)
+            power: [],
+            heartRate: [],
+            cadence: [],
+            time: []           // in seconds
+        };
+
+        let startTime = null;
+
+        for (const record of records) {
+            // Extract GPS coordinates (semicircles to degrees conversion if needed)
+            let lat = record.position_lat;
+            let lng = record.position_long;
+
+            // FitParser usually converts to degrees, but check for semicircles format
+            if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
+                // Semicircles to degrees: value * (180 / 2^31)
+                // FitParser with our settings should already convert to degrees
+                // But if values are very large, they might be in semicircles
+                if (Math.abs(lat) > 180) {
+                    lat = lat * (180 / Math.pow(2, 31));
+                    lng = lng * (180 / Math.pow(2, 31));
+                }
+
+                // Only add valid coordinates
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    parseResult.coordinates.push([lat, lng]);
+
+                    // Extract telemetry at this point
+                    // Distance - convert to cm
+                    if (record.distance !== undefined && record.distance !== null) {
+                        telemetry.distance.push(Math.round(record.distance * 100)); // m to cm
+                    } else {
+                        telemetry.distance.push(telemetry.distance.length > 0 ?
+                            telemetry.distance[telemetry.distance.length - 1] : 0);
+                    }
+
+                    // Altitude - convert to cm (FitParser gives meters)
+                    if (record.altitude !== undefined && record.altitude !== null) {
+                        telemetry.altitude.push(Math.round(record.altitude * 100)); // m to cm
+                    } else if (record.enhanced_altitude !== undefined) {
+                        telemetry.altitude.push(Math.round(record.enhanced_altitude * 100));
+                    } else {
+                        telemetry.altitude.push(0);
+                    }
+
+                    // Speed - convert to cm/sec (FitParser gives m/s or km/h depending on settings)
+                    if (record.speed !== undefined && record.speed !== null) {
+                        // Assuming km/h from our settings, convert to cm/s
+                        telemetry.speed.push(Math.round(record.speed * 100000 / 3600)); // km/h to cm/s
+                    } else if (record.enhanced_speed !== undefined) {
+                        telemetry.speed.push(Math.round(record.enhanced_speed * 100000 / 3600));
+                    } else {
+                        telemetry.speed.push(0);
+                    }
+
+                    // Power
+                    telemetry.power.push(record.power || 0);
+
+                    // Heart rate
+                    telemetry.heartRate.push(record.heart_rate || 0);
+
+                    // Cadence
+                    telemetry.cadence.push(record.cadence || 0);
+
+                    // Time - elapsed seconds from start
+                    if (record.timestamp) {
+                        if (!startTime) {
+                            startTime = new Date(record.timestamp).getTime();
+                        }
+                        const elapsed = (new Date(record.timestamp).getTime() - startTime) / 1000;
+                        telemetry.time.push(elapsed);
+                    } else if (record.elapsed_time !== undefined) {
+                        telemetry.time.push(record.elapsed_time);
+                    } else {
+                        telemetry.time.push(telemetry.time.length);
+                    }
+                }
+            }
+        }
+
+        parseResult.telemetry = telemetry;
+
+        console.log(`Extracted ${parseResult.coordinates.length} GPS points from FIT file`);
+        console.log(`Telemetry points: distance=${telemetry.distance.length}, altitude=${telemetry.altitude.length}`);
+    }
+
+    // Generate checkpoints from the data
+    if (parseResult.coordinates.length > 0) {
+        parseResult.checkpoints = generateAutoCheckpoints(
+            parseResult.coordinates,
+            parseResult.telemetry,
+            1000 // 1km intervals
+        );
+    }
+
+    // Add lap markers as checkpoints if available
+    if (fitData.laps && fitData.laps.length > 1) {
+        console.log(`Found ${fitData.laps.length} laps in FIT file`);
+
+        let lapDistance = 0;
+        for (let i = 0; i < fitData.laps.length; i++) {
+            const lap = fitData.laps[i];
+            lapDistance += (lap.total_distance || 0);
+
+            // Find the closest coordinate to this lap distance
+            const coordIndex = findClosestCoordinateByDistance(
+                parseResult.telemetry?.distance || [],
+                lapDistance * 100 // convert to cm
+            );
+
+            if (coordIndex >= 0 && coordIndex < parseResult.coordinates.length) {
+                parseResult.checkpoints.push({
+                    name: `Lap ${i + 1}`,
+                    coordinates: parseResult.coordinates[coordIndex],
+                    distance: lapDistance,
+                    altitude: (parseResult.telemetry?.altitude?.[coordIndex] || 0) / 100,
+                    index: coordIndex,
+                    type: 'lap',
+                    lapTime: lap.total_elapsed_time || null,
+                    avgPower: lap.avg_power || null,
+                    avgHeartRate: lap.avg_heart_rate || null
+                });
+            }
+        }
+    }
+
+    if (parseResult.coordinates.length === 0) {
+        throw new Error('No GPS coordinates found in FIT file. The file may not contain location data.');
+    }
+
+    return parseResult;
+}
+
+/**
+ * Find the closest coordinate index for a given distance
+ * @param {Array} distanceArray - Array of distances in cm
+ * @param {number} targetDistance - Target distance in cm
+ * @returns {number} Index of closest coordinate
+ */
+function findClosestCoordinateByDistance(distanceArray, targetDistance) {
+    if (!distanceArray || distanceArray.length === 0) return -1;
+
+    let closestIndex = 0;
+    let closestDiff = Math.abs(distanceArray[0] - targetDistance);
+
+    for (let i = 1; i < distanceArray.length; i++) {
+        const diff = Math.abs(distanceArray[i] - targetDistance);
+        if (diff < closestDiff) {
+            closestDiff = diff;
+            closestIndex = i;
+        }
+    }
+
+    return closestIndex;
 }
 
 /**

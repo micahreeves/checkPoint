@@ -1,17 +1,379 @@
-// checkpoint-manager.mjs - Checkpoint Management Module (FIXED)
+// checkpoint-manager.mjs - Enhanced Checkpoint Management Module
+// Inspired by Sauce4Zwift's segment/route tracking architecture
 
 import * as locale from '/shared/sauce/locale.mjs';
 import * as common from '/pages/src/common.mjs';
 
 const H = locale.human;
 
+// Constants for distance calculations (matching Sauce patterns)
+const DEFAULT_EPSILON = 0.004; // 1/250 precision for curve sampling
+const CHECKPOINT_COLORS = {
+    start: '#00ff00',
+    finish: '#ff0000',
+    split: '#ffaa00',
+    lap: '#00aaff',
+    checkpoint: '#ffffff',
+    segment_start: '#ff00ff',
+    segment_end: '#ff00ff'
+};
+
+/**
+ * Simple LRU Cache for distance calculations (from Sauce)
+ */
+class LRUCache extends Map {
+    constructor(capacity = 1000) {
+        super();
+        this._capacity = capacity;
+    }
+
+    get(key) {
+        const value = super.get(key);
+        if (value !== undefined) {
+            // Move to end (most recently used)
+            super.delete(key);
+            super.set(key, value);
+        }
+        return value;
+    }
+
+    set(key, value) {
+        if (this.size >= this._capacity) {
+            // Delete oldest entry
+            const firstKey = this.keys().next().value;
+            super.delete(firstKey);
+        }
+        super.set(key, value);
+    }
+}
+
+/**
+ * Vector math utilities (from Sauce curves.mjs)
+ */
+function vecDist2d(a, b) {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function vecDist3d(a, b) {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const dz = (b[2] || 0) - (a[2] || 0);
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function lerp(t, a, b) {
+    const s = 1 - t;
+    return [
+        a[0] * s + b[0] * t,
+        a[1] * s + b[1] * t,
+        (a[2] || 0) * s + (b[2] || 0) * t
+    ];
+}
+
+/**
+ * CurvePath - Simplified curve-based path for distance calculations
+ * Based on Sauce4Zwift's CurvePath class
+ */
+export class CurvePath {
+    constructor(coordinates, telemetry = null) {
+        this.coordinates = coordinates || [];
+        this.telemetry = telemetry;
+        this._distanceCache = new LRUCache(500);
+        this._cumulativeDistances = null;
+        this._totalDistance = null;
+
+        // Pre-compute cumulative distances
+        if (this.coordinates.length > 0) {
+            this._computeCumulativeDistances();
+        }
+    }
+
+    /**
+     * Pre-compute cumulative distances for O(1) lookups
+     */
+    _computeCumulativeDistances() {
+        const distances = [0];
+        let totalDist = 0;
+
+        for (let i = 1; i < this.coordinates.length; i++) {
+            const prev = this.coordinates[i - 1];
+            const curr = this.coordinates[i];
+
+            if (prev && curr) {
+                const segmentDist = vecDist2d(prev, curr);
+                totalDist += segmentDist;
+            }
+            distances.push(totalDist);
+        }
+
+        this._cumulativeDistances = distances;
+        this._totalDistance = totalDist;
+
+        console.log(`CurvePath: Computed ${distances.length} cumulative distances, total: ${totalDist.toFixed(2)}`);
+    }
+
+    /**
+     * Get total path distance
+     */
+    get totalDistance() {
+        if (this._totalDistance === null) {
+            this._computeCumulativeDistances();
+        }
+        return this._totalDistance || 0;
+    }
+
+    /**
+     * Get cumulative distances array
+     */
+    get cumulativeDistances() {
+        if (this._cumulativeDistances === null) {
+            this._computeCumulativeDistances();
+        }
+        return this._cumulativeDistances || [];
+    }
+
+    /**
+     * Get distance at a specific coordinate index
+     */
+    distanceAtIndex(index) {
+        const distances = this.cumulativeDistances;
+        if (index < 0) return 0;
+        if (index >= distances.length) return this.totalDistance;
+        return distances[index];
+    }
+
+    /**
+     * Get progress (0-1) at a specific coordinate index
+     */
+    progressAtIndex(index) {
+        if (this.totalDistance === 0) return 0;
+        return this.distanceAtIndex(index) / this.totalDistance;
+    }
+
+    /**
+     * Find coordinate index at a given distance
+     */
+    indexAtDistance(targetDistance) {
+        const distances = this.cumulativeDistances;
+        if (targetDistance <= 0) return 0;
+        if (targetDistance >= this.totalDistance) return distances.length - 1;
+
+        // Binary search for efficiency
+        let low = 0;
+        let high = distances.length - 1;
+
+        while (low < high) {
+            const mid = Math.floor((low + high) / 2);
+            if (distances[mid] < targetDistance) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+
+        return low;
+    }
+
+    /**
+     * Find coordinate index at a given progress (0-1)
+     */
+    indexAtProgress(progress) {
+        const targetDist = progress * this.totalDistance;
+        return this.indexAtDistance(targetDist);
+    }
+
+    /**
+     * Get interpolated point at a specific distance along path
+     */
+    pointAtDistance(targetDistance) {
+        if (this.coordinates.length === 0) return null;
+        if (targetDistance <= 0) return this.coordinates[0];
+        if (targetDistance >= this.totalDistance) {
+            return this.coordinates[this.coordinates.length - 1];
+        }
+
+        const index = this.indexAtDistance(targetDistance);
+        if (index === 0) return this.coordinates[0];
+
+        const prevDist = this.cumulativeDistances[index - 1];
+        const currDist = this.cumulativeDistances[index];
+        const segmentLength = currDist - prevDist;
+
+        if (segmentLength === 0) return this.coordinates[index];
+
+        const t = (targetDistance - prevDist) / segmentLength;
+        return lerp(t, this.coordinates[index - 1], this.coordinates[index]);
+    }
+
+    /**
+     * Get interpolated point at a specific progress (0-1)
+     */
+    pointAtProgress(progress) {
+        return this.pointAtDistance(progress * this.totalDistance);
+    }
+
+    /**
+     * Calculate distance from a point to the path
+     * Returns { distance, nearestIndex, nearestPoint, progress }
+     */
+    distanceFromPath(point, searchRadius = Infinity) {
+        if (this.coordinates.length === 0) {
+            return { distance: Infinity, nearestIndex: -1, nearestPoint: null, progress: 0 };
+        }
+
+        let minDist = Infinity;
+        let nearestIndex = 0;
+        let nearestPoint = this.coordinates[0];
+
+        for (let i = 0; i < this.coordinates.length; i++) {
+            const coord = this.coordinates[i];
+            const dist = vecDist2d(point, coord);
+
+            if (dist < minDist) {
+                minDist = dist;
+                nearestIndex = i;
+                nearestPoint = coord;
+
+                if (dist < searchRadius && dist < 1) {
+                    // Close enough, stop searching
+                    break;
+                }
+            }
+        }
+
+        return {
+            distance: minDist,
+            nearestIndex,
+            nearestPoint,
+            progress: this.progressAtIndex(nearestIndex)
+        };
+    }
+}
+
+/**
+ * Segment - A named section of the route with timing
+ */
+export class Segment {
+    constructor(options = {}) {
+        this.id = options.id || Date.now();
+        this.name = options.name || 'Unnamed Segment';
+        this.startProgress = options.startProgress || 0; // 0-1
+        this.endProgress = options.endProgress || 1;     // 0-1
+        this.startIndex = options.startIndex || 0;
+        this.endIndex = options.endIndex || 0;
+        this.distance = options.distance || 0;           // in meters
+        this.type = options.type || 'segment';           // segment, climb, sprint, etc.
+        this.color = options.color || '#ff00ff';
+
+        // Timing
+        this.bestTime = null;
+        this.currentTime = null;
+        this.enterTime = null;
+        this.exitTime = null;
+        this.isActive = false;
+        this.isCompleted = false;
+
+        // Map entity reference
+        this.mapEntities = [];
+    }
+
+    reset() {
+        this.bestTime = null;
+        this.currentTime = null;
+        this.enterTime = null;
+        this.exitTime = null;
+        this.isActive = false;
+        this.isCompleted = false;
+    }
+}
+
+/**
+ * Checkpoint - A point on the route to track
+ */
+export class Checkpoint {
+    constructor(options = {}) {
+        this.id = options.id || Date.now();
+        this.name = options.name || 'Checkpoint';
+        this.coordinates = options.coordinates || [0, 0];
+        this.index = options.index || 0;                 // Index in coordinates array
+        this.progress = options.progress || 0;           // 0-1 progress along route
+        this.distance = options.distance || 0;           // Distance from start in meters
+        this.altitude = options.altitude || 0;
+        this.type = options.type || 'checkpoint';        // start, finish, split, lap, checkpoint
+        this.radius = options.radius || 50;              // Detection radius
+
+        // Timing
+        this.targetTime = options.targetTime || null;    // Target time to beat
+        this.bestTime = options.bestTime || null;        // Personal best
+        this.currentTime = null;                         // Current attempt time
+        this.splitTime = null;                           // Time since last checkpoint
+        this.completed = false;
+        this.completedAt = null;                         // Timestamp when completed
+        this.active = false;
+
+        // Map entity reference
+        this.mapEntity = null;
+    }
+
+    reset() {
+        this.currentTime = null;
+        this.splitTime = null;
+        this.completed = false;
+        this.completedAt = null;
+        this.active = false;
+    }
+}
+
+/**
+ * SplitTime - Record of a checkpoint split
+ */
+export class SplitTime {
+    constructor(checkpoint, timestamp, totalTime, splitTime) {
+        this.checkpointId = checkpoint.id;
+        this.checkpointName = checkpoint.name;
+        this.timestamp = timestamp;
+        this.totalTime = totalTime;          // Total time from start
+        this.splitTime = splitTime;          // Time since last checkpoint
+        this.distance = checkpoint.distance;
+        this.delta = null;                   // Difference from target/best
+    }
+}
+
+/**
+ * Enhanced CheckpointManager with full segment/timing support
+ */
 export class CheckpointManager {
     constructor(settings = {}) {
         this.checkpoints = [];
+        this.segments = [];
+        this.curvePath = null;
+        this.settings = {
+            checkpointRadius: 50,
+            showCheckpoints: true,
+            showSegments: true,
+            autoGenerateCheckpoints: true,
+            checkpointInterval: 1000,        // meters
+            ...settings
+        };
+
+        // Timing state
         this.startTime = null;
-        this.segmentTimes = [];
-        this.settings = settings || {};
+        this.lastCheckpointTime = null;
+        this.splitTimes = [];
+        this.isRunning = false;
+
+        // Progress tracking
+        this.currentProgress = 0;            // 0-1
+        this.currentDistance = 0;            // meters
+        this.currentIndex = 0;               // coordinate index
+
+        // Map reference
         this.zwiftMap = null;
+
+        // Route data
+        this.routeData = null;
     }
 
     setMap(zwiftMap) {
@@ -19,114 +381,159 @@ export class CheckpointManager {
     }
 
     /**
-     * Load checkpoints from parsed data - FIXED
+     * Initialize with route data
+     */
+    initializeWithRoute(routeData) {
+        this.routeData = routeData;
+
+        if (!routeData || !routeData.coordinates || routeData.coordinates.length === 0) {
+            console.warn('No valid route data for checkpoint manager');
+            return;
+        }
+
+        // Create CurvePath for distance calculations
+        this.curvePath = new CurvePath(routeData.coordinates, routeData.telemetry);
+
+        console.log(`CheckpointManager initialized with ${routeData.coordinates.length} coordinates`);
+        console.log(`Total route distance: ${(this.curvePath.totalDistance / 1000).toFixed(2)} km`);
+    }
+
+    /**
+     * Load checkpoints from parsed data
      */
     async loadCheckpointsFromData(checkpointData, routeData = null) {
+        // Initialize route if provided
+        if (routeData) {
+            this.initializeWithRoute(routeData);
+        }
+
         this.checkpoints = [];
-        
+
         if (!checkpointData || !Array.isArray(checkpointData)) {
             console.warn('No valid checkpoint data provided');
             return this.checkpoints;
         }
-        
+
         for (const [index, cp] of checkpointData.entries()) {
             try {
-                // Null safety checks
-                if (!cp || typeof cp !== 'object') {
-                    console.warn(`Invalid checkpoint at index ${index}:`, cp);
-                    continue;
-                }
+                if (!cp || typeof cp !== 'object') continue;
 
-                let checkpointCoords = cp.coordinates;
-                
-                // Ensure coordinates are valid
-                if (!Array.isArray(checkpointCoords) || checkpointCoords.length < 2) {
-                    console.warn(`Invalid coordinates for checkpoint ${index}:`, checkpointCoords);
-                    checkpointCoords = [0, 0]; // Default fallback
-                } else {
-                    // Validate coordinate values
-                    const [x, y] = checkpointCoords;
-                    if (x === null || x === undefined || y === null || y === undefined || 
-                        isNaN(x) || isNaN(y)) {
-                        console.warn(`Invalid coordinate values for checkpoint ${index}:`, checkpointCoords);
-                        checkpointCoords = [0, 0]; // Default fallback
-                    }
-                }
-                
-                const checkpoint = {
+                const checkpoint = new Checkpoint({
                     id: Date.now() + index,
                     name: cp.name || `Checkpoint ${index + 1}`,
-                    coordinates: checkpointCoords,
-                    distance: (typeof cp.distance === 'number' && !isNaN(cp.distance)) ? cp.distance : 0,
-                    altitude: (typeof cp.altitude === 'number' && !isNaN(cp.altitude)) ? cp.altitude : 0,
-                    completed: false,
-                    time: null,
+                    coordinates: this._validateCoordinates(cp.coordinates),
+                    index: cp.index ?? index,
+                    distance: cp.distance || 0,
+                    altitude: cp.altitude || 0,
                     type: cp.type || 'checkpoint',
-                    index: (typeof cp.index === 'number' && !isNaN(cp.index)) ? cp.index : index,
-                    active: false
-                };
-                
+                    targetTime: cp.time || null,
+                    radius: this.settings.checkpointRadius
+                });
+
+                // Calculate progress if we have a curve path
+                if (this.curvePath && this.curvePath.totalDistance > 0) {
+                    checkpoint.progress = checkpoint.distance / this.curvePath.totalDistance;
+                }
+
                 this.checkpoints.push(checkpoint);
-                
-                // Add to map if available
-                if (this.zwiftMap) {
-                    try {
-                        this.addCheckpointToMap(checkpoint);
-                    } catch (error) {
-                        console.warn(`Error adding checkpoint ${index} to map:`, error);
-                    }
+
+                // Add visual marker to map
+                if (this.zwiftMap && this.settings.showCheckpoints) {
+                    this._addCheckpointMarker(checkpoint);
                 }
             } catch (error) {
                 console.warn(`Error loading checkpoint ${index}:`, error);
             }
         }
-        
+
+        // Sort checkpoints by distance
+        this.checkpoints.sort((a, b) => a.distance - b.distance);
+
         console.log(`Loaded ${this.checkpoints.length} checkpoints`);
         return this.checkpoints;
     }
 
     /**
-     * Add checkpoint at specific coordinates - FIXED
+     * Add a segment
      */
-    async addCheckpoint(coordinates, name = null) {
-        // Validate coordinates
-        if (!Array.isArray(coordinates) || coordinates.length < 2) {
-            throw new Error('Invalid coordinates provided');
+    addSegment(options) {
+        const segment = new Segment(options);
+
+        // Calculate indices from progress if curve path available
+        if (this.curvePath) {
+            segment.startIndex = this.curvePath.indexAtProgress(segment.startProgress);
+            segment.endIndex = this.curvePath.indexAtProgress(segment.endProgress);
+            segment.distance = (segment.endProgress - segment.startProgress) * this.curvePath.totalDistance;
         }
 
-        const [x, y] = coordinates;
-        if (x === null || x === undefined || y === null || y === undefined || 
-            isNaN(x) || isNaN(y)) {
-            throw new Error('Invalid coordinate values');
+        this.segments.push(segment);
+
+        // Add visual markers
+        if (this.zwiftMap && this.settings.showSegments) {
+            this._addSegmentMarkers(segment);
         }
 
-        const checkpoint = {
+        return segment;
+    }
+
+    /**
+     * Create segment from two checkpoints
+     */
+    createSegmentFromCheckpoints(startCheckpoint, endCheckpoint, name = null) {
+        return this.addSegment({
+            name: name || `${startCheckpoint.name} to ${endCheckpoint.name}`,
+            startProgress: startCheckpoint.progress,
+            endProgress: endCheckpoint.progress,
+            startIndex: startCheckpoint.index,
+            endIndex: endCheckpoint.index,
+            distance: endCheckpoint.distance - startCheckpoint.distance,
+            type: 'segment'
+        });
+    }
+
+    /**
+     * Add checkpoint at specific coordinates
+     */
+    async addCheckpoint(coordinates, name = null, type = 'manual') {
+        const validCoords = this._validateCoordinates(coordinates);
+
+        let distance = 0;
+        let progress = 0;
+        let index = 0;
+
+        // Calculate distance and progress using curve path
+        if (this.curvePath) {
+            const result = this.curvePath.distanceFromPath(validCoords);
+            distance = this.curvePath.distanceAtIndex(result.nearestIndex);
+            progress = result.progress;
+            index = result.nearestIndex;
+        }
+
+        const checkpoint = new Checkpoint({
             id: Date.now(),
             name: name || `Checkpoint ${this.checkpoints.length + 1}`,
-            coordinates: [x, y],
-            distance: 0, // Could calculate from route data if available
-            completed: false,
-            time: null,
-            active: false,
-            type: 'manual'
-        };
-        
+            coordinates: validCoords,
+            index,
+            progress,
+            distance,
+            type,
+            radius: this.settings.checkpointRadius
+        });
+
         this.checkpoints.push(checkpoint);
-        
-        if (this.zwiftMap) {
-            try {
-                this.addCheckpointToMap(checkpoint);
-            } catch (error) {
-                console.warn('Error adding checkpoint to map:', error);
-                // Don't throw here, checkpoint is still valid
-            }
+
+        // Re-sort by distance
+        this.checkpoints.sort((a, b) => a.distance - b.distance);
+
+        if (this.zwiftMap && this.settings.showCheckpoints) {
+            this._addCheckpointMarker(checkpoint);
         }
-        
+
         return checkpoint;
     }
 
     /**
-     * Add checkpoint at current athlete position - FIXED
+     * Add checkpoint at current athlete position
      */
     async addCheckpointAtCurrentPosition(watchingId, athleteId) {
         try {
@@ -136,20 +543,21 @@ export class CheckpointManager {
             }
 
             const state = athleteData.state;
-            if (state.x === null || state.x === undefined || state.y === null || state.y === undefined ||
-                isNaN(state.x) || isNaN(state.y)) {
-                throw new Error('Invalid athlete position coordinates');
-            }
-            
             const checkpoint = await this.addCheckpoint(
                 [state.x, state.y],
-                `Checkpoint ${this.checkpoints.length + 1}`
+                `Checkpoint ${this.checkpoints.length + 1}`,
+                'manual'
             );
-            
-            checkpoint.distance = (typeof state.distance === 'number' && !isNaN(state.distance)) ? state.distance : 0;
-            
+
+            // Override distance from athlete state if available
+            if (state.distance) {
+                checkpoint.distance = state.distance;
+                if (this.curvePath && this.curvePath.totalDistance > 0) {
+                    checkpoint.progress = state.distance / this.curvePath.totalDistance;
+                }
+            }
+
             return checkpoint;
-            
         } catch (error) {
             console.error('Error adding checkpoint:', error);
             throw error;
@@ -157,310 +565,457 @@ export class CheckpointManager {
     }
 
     /**
-     * Add checkpoint visual to map - FIXED
+     * Check athlete progress and update checkpoints/segments
      */
-    addCheckpointToMap(checkpoint) {
-        if (!this.zwiftMap) {
-            console.warn('No map available for checkpoint');
-            return;
+    updateProgress(athleteState) {
+        if (!athleteState) return { reached: [], activeCheckpoint: null, activeSegments: [] };
+
+        const athletePos = [athleteState.x, athleteState.y];
+        const currentTime = Date.now();
+
+        // Initialize timing on first movement
+        if (!this.isRunning && (athleteState.speed || 0) > 0) {
+            this.startTiming();
         }
 
-        if (!checkpoint || !checkpoint.coordinates || !Array.isArray(checkpoint.coordinates) || 
-            checkpoint.coordinates.length < 2) {
-            console.warn('Invalid checkpoint for map:', checkpoint);
-            return;
+        // Update current position tracking
+        if (this.curvePath) {
+            const pathResult = this.curvePath.distanceFromPath(athletePos);
+            this.currentProgress = pathResult.progress;
+            this.currentDistance = this.curvePath.distanceAtIndex(pathResult.nearestIndex);
+            this.currentIndex = pathResult.nearestIndex;
         }
-        
-        try {
-            const entity = this.zwiftMap.addPoint(checkpoint.coordinates, 'checkpoint');
-            if (!entity || !entity.el) {
-                console.warn('Failed to create map entity for checkpoint');
-                return;
+
+        const results = {
+            reached: [],
+            activeCheckpoint: null,
+            activeSegments: [],
+            currentProgress: this.currentProgress,
+            currentDistance: this.currentDistance
+        };
+
+        // Check checkpoints
+        let closestIncomplete = null;
+        let closestDistance = Infinity;
+
+        for (const checkpoint of this.checkpoints) {
+            if (!checkpoint.coordinates) continue;
+
+            const dist = vecDist2d(athletePos, checkpoint.coordinates);
+            checkpoint.active = false;
+
+            if (checkpoint.completed) continue;
+
+            if (dist <= checkpoint.radius) {
+                // Checkpoint reached!
+                this._completeCheckpoint(checkpoint, currentTime);
+                results.reached.push(checkpoint);
+            } else if (dist < closestDistance) {
+                closestDistance = dist;
+                closestIncomplete = checkpoint;
+            }
+        }
+
+        // Mark closest incomplete checkpoint as active
+        if (closestIncomplete) {
+            closestIncomplete.active = true;
+            results.activeCheckpoint = closestIncomplete;
+
+            if (closestIncomplete.mapEntity?.el) {
+                this._updateCheckpointVisuals(closestIncomplete);
+            }
+        }
+
+        // Check segments
+        for (const segment of this.segments) {
+            const wasActive = segment.isActive;
+
+            // Check if athlete is within segment bounds
+            const inSegment = this.currentProgress >= segment.startProgress &&
+                             this.currentProgress <= segment.endProgress;
+
+            if (inSegment && !segment.isActive && !segment.isCompleted) {
+                // Entering segment
+                segment.isActive = true;
+                segment.enterTime = currentTime;
+                console.log(`Entered segment: ${segment.name}`);
+            } else if (!inSegment && segment.isActive) {
+                // Exiting segment
+                segment.isActive = false;
+                segment.exitTime = currentTime;
+                segment.currentTime = segment.exitTime - segment.enterTime;
+                segment.isCompleted = true;
+
+                console.log(`Completed segment: ${segment.name} in ${H.timer(segment.currentTime / 1000)}`);
             }
 
-            entity.el.dataset.checkpointId = checkpoint.id;
-            entity.el.classList.add('checkpoint');
-            
-            // Add type-specific classes
-            if (checkpoint.type) {
-                entity.el.classList.add(checkpoint.type);
+            if (segment.isActive) {
+                results.activeSegments.push(segment);
+                segment.currentTime = currentTime - segment.enterTime;
             }
-            
-            // Store reference
-            checkpoint.mapEntity = entity;
-            
-            // Hide if checkpoints are disabled
-            if (!this.settings.showCheckpoints) {
-                entity.toggleHidden(true);
-            }
-        } catch (error) {
-            console.warn('Error adding checkpoint to map:', error);
         }
+
+        return results;
     }
 
     /**
-     * Check if athlete has reached any checkpoint - FIXED
+     * Complete a checkpoint and record split time
      */
-    checkCheckpointProgress(athleteState) {
-        if (!athleteState || this.checkpoints.length === 0) {
-            return { reached: false };
+    _completeCheckpoint(checkpoint, timestamp) {
+        checkpoint.completed = true;
+        checkpoint.completedAt = timestamp;
+
+        if (this.startTime) {
+            checkpoint.currentTime = timestamp - this.startTime;
+            checkpoint.splitTime = this.lastCheckpointTime ?
+                timestamp - this.lastCheckpointTime : checkpoint.currentTime;
+
+            // Calculate delta from target/best
+            const targetTime = checkpoint.targetTime || checkpoint.bestTime;
+            if (targetTime) {
+                checkpoint.delta = checkpoint.currentTime - targetTime;
+            }
+
+            // Record split
+            const split = new SplitTime(
+                checkpoint,
+                timestamp,
+                checkpoint.currentTime,
+                checkpoint.splitTime
+            );
+            split.delta = checkpoint.delta;
+            this.splitTimes.push(split);
+
+            this.lastCheckpointTime = timestamp;
         }
 
-        // Validate athlete state
-        if (athleteState.x === null || athleteState.x === undefined || 
-            athleteState.y === null || athleteState.y === undefined ||
-            isNaN(athleteState.x) || isNaN(athleteState.y)) {
-            console.warn('Invalid athlete state coordinates:', athleteState);
-            return { reached: false };
+        // Update visuals
+        if (checkpoint.mapEntity?.el) {
+            checkpoint.mapEntity.el.classList.add('completed');
+            checkpoint.mapEntity.el.classList.remove('active');
         }
-        
-        const athletePos = [athleteState.x, athleteState.y];
+
+        console.log(`Checkpoint reached: ${checkpoint.name} - Total: ${H.timer(checkpoint.currentTime / 1000)}, Split: ${H.timer(checkpoint.splitTime / 1000)}`);
+    }
+
+    /**
+     * Start timing
+     */
+    startTiming() {
+        this.startTime = Date.now();
+        this.lastCheckpointTime = this.startTime;
+        this.isRunning = true;
+        this.splitTimes = [];
+        console.log('Checkpoint timing started');
+    }
+
+    /**
+     * Stop timing
+     */
+    stopTiming() {
+        this.isRunning = false;
+        console.log('Checkpoint timing stopped');
+    }
+
+    /**
+     * Reset all timing and progress
+     */
+    resetTiming() {
+        this.startTime = null;
+        this.lastCheckpointTime = null;
+        this.isRunning = false;
+        this.splitTimes = [];
+        this.currentProgress = 0;
+        this.currentDistance = 0;
+        this.currentIndex = 0;
+
+        for (const checkpoint of this.checkpoints) {
+            checkpoint.reset();
+            if (checkpoint.mapEntity?.el) {
+                checkpoint.mapEntity.el.classList.remove('completed', 'active');
+            }
+        }
+
+        for (const segment of this.segments) {
+            segment.reset();
+        }
+
+        console.log('Checkpoint timing reset');
+    }
+
+    /**
+     * Get current timing info
+     */
+    getTimingInfo() {
+        if (!this.startTime || !this.isRunning) {
+            return {
+                totalTime: 0,
+                segmentTime: 0,
+                hasStarted: false,
+                completedCheckpoints: 0,
+                progress: 0
+            };
+        }
+
         const currentTime = Date.now();
-        const checkpointRadius = this.settings.checkpointRadius || 50;
-        
-        // Initialize start time on first movement
-        if (!this.startTime && (athleteState.speed || 0) > 0) {
-            this.startTime = currentTime;
-            console.log('Checkpoint timing started');
-        }
-        
-        let activeCheckpoint = null;
-        let checkpointReached = false;
-        let reachedCheckpoint = null;
-        
-        // Check each incomplete checkpoint
-        this.checkpoints.forEach(checkpoint => {
-            if (!checkpoint || !checkpoint.coordinates || !Array.isArray(checkpoint.coordinates) ||
-                checkpoint.coordinates.length < 2) {
-                return; // Skip invalid checkpoints
-            }
+        const totalTime = currentTime - this.startTime;
+        const segmentTime = this.lastCheckpointTime ?
+            currentTime - this.lastCheckpointTime : totalTime;
+        const completedCount = this.checkpoints.filter(cp => cp.completed).length;
 
-            const wasActive = checkpoint.active;
-            checkpoint.active = false;
-            
-            if (checkpoint.completed) return;
-            
-            // Calculate distance to checkpoint
-            let distance;
-            try {
-                const [cpX, cpY] = checkpoint.coordinates;
-                if (cpX === null || cpX === undefined || cpY === null || cpY === undefined ||
-                    isNaN(cpX) || isNaN(cpY)) {
-                    console.warn('Invalid checkpoint coordinates:', checkpoint.coordinates);
-                    return;
-                }
-
-                distance = Math.sqrt(
-                    Math.pow(athletePos[0] - cpX, 2) +
-                    Math.pow(athletePos[1] - cpY, 2)
-                );
-            } catch (error) {
-                console.warn('Error calculating distance to checkpoint:', error);
-                return;
-            }
-            
-            // Check if within radius
-            if (distance <= checkpointRadius) {
-                if (!checkpoint.completed) {
-                    // Checkpoint reached!
-                    checkpoint.completed = true;
-                    checkpoint.time = this.startTime ? currentTime - this.startTime : 0;
-                    checkpointReached = true;
-                    reachedCheckpoint = checkpoint;
-                    
-                    // Update visual state
-                    if (checkpoint.mapEntity && checkpoint.mapEntity.el) {
-                        checkpoint.mapEntity.el.classList.add('completed');
-                        checkpoint.mapEntity.el.classList.remove('active');
-                    }
-                    
-                    // Add to segment times
-                    this.segmentTimes.push({
-                        checkpoint: checkpoint.name,
-                        time: checkpoint.time,
-                        totalTime: currentTime - (this.startTime || currentTime)
-                    });
-                    
-                    console.log(`Checkpoint reached: ${checkpoint.name} in ${H.timer(checkpoint.time / 1000)}`);
-                }
-            } else {
-                // Find the next closest checkpoint to mark as active
-                if (!activeCheckpoint || distance < activeCheckpoint.distance) {
-                    activeCheckpoint = { checkpoint, distance };
-                }
-            }
-            
-            // Update map entity active state
-            if (checkpoint.mapEntity && checkpoint.mapEntity.el && wasActive !== checkpoint.active) {
-                checkpoint.mapEntity.el.classList.toggle('active', checkpoint.active);
-            }
-        });
-        
-        // Mark the closest incomplete checkpoint as active
-        if (activeCheckpoint && !activeCheckpoint.checkpoint.completed) {
-            activeCheckpoint.checkpoint.active = true;
-            if (activeCheckpoint.checkpoint.mapEntity && activeCheckpoint.checkpoint.mapEntity.el) {
-                activeCheckpoint.checkpoint.mapEntity.el.classList.add('active');
-            }
-        }
-        
         return {
-            reached: checkpointReached,
-            checkpoint: reachedCheckpoint,
-            activeCheckpoint: activeCheckpoint?.checkpoint
+            totalTime,
+            segmentTime,
+            hasStarted: true,
+            completedCheckpoints: completedCount,
+            totalCheckpoints: this.checkpoints.length,
+            progress: this.currentProgress,
+            distance: this.currentDistance
         };
     }
 
     /**
-     * Delete a checkpoint - FIXED
+     * Get split times summary
+     */
+    getSplitTimes() {
+        return this.splitTimes.map(split => ({
+            name: split.checkpointName,
+            totalTime: split.totalTime,
+            splitTime: split.splitTime,
+            delta: split.delta,
+            distance: split.distance,
+            formattedTotal: H.timer(split.totalTime / 1000),
+            formattedSplit: H.timer(split.splitTime / 1000),
+            formattedDelta: split.delta ?
+                (split.delta > 0 ? '+' : '') + H.timer(split.delta / 1000) : null
+        }));
+    }
+
+    /**
+     * Get checkpoint statistics
+     */
+    getStats() {
+        const total = this.checkpoints.length;
+        const completed = this.checkpoints.filter(cp => cp.completed).length;
+
+        return {
+            total,
+            completed,
+            remaining: total - completed,
+            completionRate: total > 0 ? completed / total : 0,
+            segments: this.segments.length,
+            activeSegments: this.segments.filter(s => s.isActive).length,
+            progress: this.currentProgress,
+            distance: this.currentDistance
+        };
+    }
+
+    /**
+     * Add visual checkpoint marker to map
+     */
+    _addCheckpointMarker(checkpoint) {
+        if (!this.zwiftMap) return;
+
+        try {
+            const entity = this.zwiftMap.addPoint(checkpoint.coordinates, 'checkpoint');
+            if (!entity?.el) return;
+
+            entity.el.dataset.checkpointId = checkpoint.id;
+            entity.el.classList.add('checkpoint-marker', checkpoint.type);
+
+            // Set color based on type
+            const color = CHECKPOINT_COLORS[checkpoint.type] || CHECKPOINT_COLORS.checkpoint;
+            entity.el.style.setProperty('--checkpoint-color', color);
+
+            checkpoint.mapEntity = entity;
+
+            if (!this.settings.showCheckpoints) {
+                entity.toggleHidden(true);
+            }
+        } catch (error) {
+            console.warn('Error adding checkpoint marker:', error);
+        }
+    }
+
+    /**
+     * Add segment markers to map
+     */
+    _addSegmentMarkers(segment) {
+        if (!this.zwiftMap || !this.curvePath) return;
+
+        try {
+            // Add start marker
+            const startCoord = this.curvePath.coordinates[segment.startIndex];
+            if (startCoord) {
+                const startEntity = this.zwiftMap.addPoint(startCoord, 'segment-start');
+                if (startEntity?.el) {
+                    startEntity.el.classList.add('segment-marker', 'segment-start');
+                    startEntity.el.style.setProperty('--segment-color', segment.color);
+                    segment.mapEntities.push(startEntity);
+                }
+            }
+
+            // Add end marker
+            const endCoord = this.curvePath.coordinates[segment.endIndex];
+            if (endCoord) {
+                const endEntity = this.zwiftMap.addPoint(endCoord, 'segment-end');
+                if (endEntity?.el) {
+                    endEntity.el.classList.add('segment-marker', 'segment-end');
+                    endEntity.el.style.setProperty('--segment-color', segment.color);
+                    segment.mapEntities.push(endEntity);
+                }
+            }
+        } catch (error) {
+            console.warn('Error adding segment markers:', error);
+        }
+    }
+
+    /**
+     * Update checkpoint visual state
+     */
+    _updateCheckpointVisuals(checkpoint) {
+        if (!checkpoint.mapEntity?.el) return;
+
+        const el = checkpoint.mapEntity.el;
+        el.classList.toggle('active', checkpoint.active);
+        el.classList.toggle('completed', checkpoint.completed);
+    }
+
+    /**
+     * Toggle checkpoint visibility
+     */
+    toggleCheckpointVisibility(show) {
+        this.settings.showCheckpoints = show;
+        for (const cp of this.checkpoints) {
+            if (cp.mapEntity) {
+                cp.mapEntity.toggleHidden(!show);
+            }
+        }
+    }
+
+    /**
+     * Toggle segment visibility
+     */
+    toggleSegmentVisibility(show) {
+        this.settings.showSegments = show;
+        for (const segment of this.segments) {
+            for (const entity of segment.mapEntities) {
+                entity.toggleHidden(!show);
+            }
+        }
+    }
+
+    /**
+     * Delete a checkpoint
      */
     deleteCheckpoint(checkpointId) {
-        const index = this.checkpoints.findIndex(cp => cp && cp.id === checkpointId);
-        if (index === -1) return false;
-        
+        const index = this.checkpoints.findIndex(cp => cp.id === checkpointId);
+        if (index === -1) return null;
+
         const checkpoint = this.checkpoints[index];
-        if (checkpoint && checkpoint.mapEntity && this.zwiftMap) {
+        if (checkpoint.mapEntity && this.zwiftMap) {
             try {
                 this.zwiftMap.removeEntity(checkpoint.mapEntity);
             } catch (error) {
                 console.warn('Error removing checkpoint from map:', error);
             }
         }
-        
+
         this.checkpoints.splice(index, 1);
         return checkpoint;
     }
 
     /**
-     * Clear all checkpoints - FIXED
+     * Delete a segment
+     */
+    deleteSegment(segmentId) {
+        const index = this.segments.findIndex(s => s.id === segmentId);
+        if (index === -1) return null;
+
+        const segment = this.segments[index];
+        for (const entity of segment.mapEntities) {
+            try {
+                this.zwiftMap?.removeEntity(entity);
+            } catch (error) {
+                console.warn('Error removing segment marker:', error);
+            }
+        }
+
+        this.segments.splice(index, 1);
+        return segment;
+    }
+
+    /**
+     * Clear all checkpoints
      */
     clearCheckpoints() {
-        this.checkpoints.forEach(cp => {
-            if (cp && cp.mapEntity && this.zwiftMap) {
+        for (const cp of this.checkpoints) {
+            if (cp.mapEntity && this.zwiftMap) {
                 try {
                     this.zwiftMap.removeEntity(cp.mapEntity);
-                } catch (error) {
-                    console.warn('Error removing checkpoint from map:', error);
-                }
+                } catch (e) {}
             }
-        });
-        
+        }
         this.checkpoints = [];
         this.resetTiming();
-        return true;
     }
 
     /**
-     * Toggle checkpoint visibility - FIXED
+     * Clear all segments
      */
-    toggleCheckpointVisibility(show) {
-        this.checkpoints.forEach(cp => {
-            if (cp && cp.mapEntity) {
+    clearSegments() {
+        for (const segment of this.segments) {
+            for (const entity of segment.mapEntities) {
                 try {
-                    cp.mapEntity.toggleHidden(!show);
-                } catch (error) {
-                    console.warn('Error toggling checkpoint visibility:', error);
-                }
+                    this.zwiftMap?.removeEntity(entity);
+                } catch (e) {}
             }
-        });
-    }
-
-    /**
-     * Reset timing information - FIXED
-     */
-    resetTiming() {
-        this.startTime = null;
-        this.segmentTimes = [];
-        
-        this.checkpoints.forEach(cp => {
-            if (cp) {
-                cp.completed = false;
-                cp.active = false;
-                cp.time = null;
-                if (cp.mapEntity && cp.mapEntity.el) {
-                    try {
-                        cp.mapEntity.el.classList.remove('completed', 'active');
-                    } catch (error) {
-                        console.warn('Error resetting checkpoint visuals:', error);
-                    }
-                }
-            }
-        });
-        
-        console.log('Checkpoint timing reset');
-    }
-
-    /**
-     * Get timing information - FIXED
-     */
-    getTimingInfo() {
-        if (!this.startTime) {
-            return {
-                totalTime: 0,
-                segmentTime: 0,
-                hasStarted: false,
-                completedCheckpoints: 0
-            };
         }
-        
-        const currentTime = Date.now();
-        const totalElapsed = currentTime - this.startTime;
-        
-        // Find current segment (time since last completed checkpoint)
-        const completedCheckpoints = this.checkpoints.filter(cp => cp && cp.completed);
-        const lastCompleted = completedCheckpoints
-            .sort((a, b) => (b.time || 0) - (a.time || 0))[0];
-        
-        let segmentTime = totalElapsed;
-        if (lastCompleted && typeof lastCompleted.time === 'number') {
-            segmentTime = totalElapsed - lastCompleted.time;
+        this.segments = [];
+    }
+
+    /**
+     * Validate coordinates
+     */
+    _validateCoordinates(coords) {
+        if (!Array.isArray(coords) || coords.length < 2) {
+            return [0, 0];
         }
-        
-        return {
-            totalTime: totalElapsed,
-            segmentTime: segmentTime,
-            hasStarted: true,
-            completedCheckpoints: completedCheckpoints.length
-        };
+        const [x, y] = coords;
+        if (x == null || y == null || isNaN(x) || isNaN(y)) {
+            return [0, 0];
+        }
+        return [x, y];
     }
 
     /**
-     * Get checkpoint statistics - FIXED
+     * Export all data
      */
-    getStats() {
-        const total = this.checkpoints.length;
-        const completed = this.checkpoints.filter(cp => cp && cp.completed).length;
-        const remaining = total - completed;
-        
+    exportData() {
         return {
-            total,
-            completed,
-            remaining,
-            completionRate: total > 0 ? completed / total : 0
-        };
-    }
-
-    /**
-     * Export checkpoint data - FIXED
-     */
-    exportCheckpoints() {
-        return {
-            checkpoints: this.checkpoints.map(cp => {
-                if (!cp) return null;
-                return {
-                    name: cp.name || 'Unnamed',
-                    coordinates: cp.coordinates || [0, 0],
-                    distance: cp.distance || 0,
-                    altitude: cp.altitude || 0,
-                    type: cp.type || 'checkpoint',
-                    completed: !!cp.completed,
-                    time: cp.time || null
-                };
-            }).filter(cp => cp !== null),
-            timing: {
-                startTime: this.startTime,
-                segmentTimes: this.segmentTimes || []
-            },
+            checkpoints: this.checkpoints.map(cp => ({
+                name: cp.name,
+                coordinates: cp.coordinates,
+                distance: cp.distance,
+                progress: cp.progress,
+                altitude: cp.altitude,
+                type: cp.type,
+                completed: cp.completed,
+                currentTime: cp.currentTime,
+                splitTime: cp.splitTime,
+                bestTime: cp.bestTime
+            })),
+            segments: this.segments.map(s => ({
+                name: s.name,
+                startProgress: s.startProgress,
+                endProgress: s.endProgress,
+                distance: s.distance,
+                type: s.type,
+                bestTime: s.bestTime,
+                currentTime: s.currentTime
+            })),
+            splitTimes: this.getSplitTimes(),
+            timing: this.getTimingInfo(),
             stats: this.getStats()
         };
     }
