@@ -568,7 +568,7 @@ function convertFitToRouteData(fitData) {
             console.log('Coordinate fields found:', foundCoordFields.length > 0 ? foundCoordFields.join(', ') : 'NONE');
 
             // Show telemetry fields
-            const telemetryFields = ['distance', 'altitude', 'speed', 'power', 'heart_rate', 'cadence', 'timestamp'];
+            const telemetryFields = ['distance', 'altitude', 'speed', 'power', 'heart_rate', 'cadence', 'timestamp', 'timer_time', 'elapsed_time'];
             const foundTelemetryFields = telemetryFields.filter(f => records[0][f] !== undefined);
             console.log('Telemetry fields found:', foundTelemetryFields.join(', ') || 'NONE');
         }
@@ -653,8 +653,11 @@ function convertFitToRouteData(fitData) {
             // Cadence
             telemetry.cadence.push(record.cadence || 0);
 
-            // Time - elapsed seconds from start
-            if (record.timestamp) {
+            // Time - prefer timer_time (moving time) over elapsed time
+            if (record.timer_time !== undefined) {
+                // timer_time is moving time in seconds (excludes pauses)
+                telemetry.time.push(record.timer_time);
+            } else if (record.timestamp) {
                 if (!startTime) {
                     startTime = new Date(record.timestamp).getTime();
                 }
