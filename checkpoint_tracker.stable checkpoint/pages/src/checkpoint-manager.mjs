@@ -888,10 +888,10 @@ export class CheckpointManager {
                 const timeLabel = document.createElement('div');
                 timeLabel.className = 'checkpoint-time-label';
                 timeLabel.textContent = H.timer(checkpoint.targetTime);
-                // Apply inline styles to time label too
+                // Apply inline styles to time label - use top with negative value for above positioning
                 timeLabel.style.cssText = `
                     position: absolute !important;
-                    bottom: calc(100% + 8px) !important;
+                    top: -28px !important;
                     left: 50% !important;
                     transform: translateX(-50%) !important;
                     background: rgba(0, 0, 0, 0.9) !important;
