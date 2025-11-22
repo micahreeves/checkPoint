@@ -860,38 +860,43 @@ export class CheckpointManager {
             if (!entity?.el) return;
 
             entity.el.dataset.checkpointId = checkpoint.id;
+
+            // Remove Sauce's default 'point' class that has styling in map.css
+            entity.el.classList.remove('point');
             entity.el.classList.add('checkpoint-marker', checkpoint.type);
 
             // Get color based on type
             const color = CHECKPOINT_COLORS[checkpoint.type] || CHECKPOINT_COLORS.checkpoint;
 
-            // Apply inline styles directly to override any Sauce defaults
+            // Clear any inner HTML that Sauce might add first
+            entity.el.innerHTML = '';
+
+            // Apply inline styles using setProperty for maximum priority
             const el = entity.el;
-            el.style.cssText = `
-                width: 20px !important;
-                height: 20px !important;
-                min-width: 20px !important;
-                min-height: 20px !important;
-                border-radius: 50% !important;
-                background: ${color} !important;
-                background-color: ${color} !important;
-                border: 3px solid white !important;
-                box-shadow: 0 0 12px ${color}80 !important;
-                margin-left: -10px !important;
-                margin-top: -10px !important;
-                overflow: visible !important;
-                z-index: 100 !important;
-            `;
+            el.style.setProperty('width', '20px', 'important');
+            el.style.setProperty('height', '20px', 'important');
+            el.style.setProperty('min-width', '20px', 'important');
+            el.style.setProperty('min-height', '20px', 'important');
+            el.style.setProperty('border-radius', '50%', 'important');
+            el.style.setProperty('background', color, 'important');
+            el.style.setProperty('background-color', color, 'important');
+            el.style.setProperty('background-image', 'none', 'important');
+            el.style.setProperty('border', '3px solid white', 'important');
+            el.style.setProperty('box-shadow', `0 0 12px ${color}80`, 'important');
+            el.style.setProperty('margin-left', '-10px', 'important');
+            el.style.setProperty('margin-top', '-10px', 'important');
+            el.style.setProperty('overflow', 'visible', 'important');
+            el.style.setProperty('z-index', '100', 'important');
 
             // Add time label if we have a target time from FIT file
             if (checkpoint.targetTime !== null && checkpoint.targetTime !== undefined) {
                 const timeLabel = document.createElement('div');
                 timeLabel.className = 'checkpoint-time-label';
                 timeLabel.textContent = H.timer(checkpoint.targetTime);
-                // Apply inline styles to time label too
+                // Apply inline styles to time label - use top with negative value for above positioning
                 timeLabel.style.cssText = `
                     position: absolute !important;
-                    bottom: calc(100% + 8px) !important;
+                    top: -28px !important;
                     left: 50% !important;
                     transform: translateX(-50%) !important;
                     background: rgba(0, 0, 0, 0.9) !important;
