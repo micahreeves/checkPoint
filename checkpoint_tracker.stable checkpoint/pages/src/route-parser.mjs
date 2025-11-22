@@ -571,6 +571,13 @@ function convertFitToRouteData(fitData) {
             const telemetryFields = ['distance', 'altitude', 'speed', 'power', 'heart_rate', 'cadence', 'timestamp', 'timer_time', 'elapsed_time'];
             const foundTelemetryFields = telemetryFields.filter(f => records[0][f] !== undefined);
             console.log('Telemetry fields found:', foundTelemetryFields.join(', ') || 'NONE');
+
+            // Show ALL time-related fields
+            const timeFields = Object.keys(records[0]).filter(k => k.toLowerCase().includes('time'));
+            console.log('All time-related fields in record:', timeFields.join(', ') || 'NONE');
+            if (timeFields.length > 0) {
+                console.log('Time field values:', Object.fromEntries(timeFields.map(f => [f, records[0][f]])));
+            }
         }
 
         // Initialize telemetry arrays
