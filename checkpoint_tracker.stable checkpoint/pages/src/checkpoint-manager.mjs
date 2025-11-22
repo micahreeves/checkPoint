@@ -875,6 +875,7 @@ export class CheckpointManager {
                 border-radius: 50% !important;
                 background: ${color} !important;
                 background-color: ${color} !important;
+                background-image: none !important;
                 border: 3px solid white !important;
                 box-shadow: 0 0 12px ${color}80 !important;
                 margin-left: -10px !important;
@@ -882,6 +883,9 @@ export class CheckpointManager {
                 overflow: visible !important;
                 z-index: 100 !important;
             `;
+
+            // Also clear any inner HTML that Sauce might add
+            el.innerHTML = '';
 
             // Add time label if we have a target time from FIT file
             if (checkpoint.targetTime !== null && checkpoint.targetTime !== undefined) {
