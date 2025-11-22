@@ -535,19 +535,34 @@
    Enhanced Checkpoint Marker Styles
    ============================================ */
 
+/* Override default entity styles for checkpoint markers */
 .entities .entity.checkpoint-marker {
     position: absolute;
-    width: 18px;
-    height: 18px;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
     margin-left: -9px;
     margin-top: -9px;
-    border-radius: 50%;
-    background-color: var(--checkpoint-color, #ffffff);
-    border: 3px solid white;
+    border-radius: 50% !important;
+    background-color: var(--checkpoint-color, #ffffff) !important;
+    background-image: none !important;
+    border: 3px solid white !important;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
     z-index: 100;
     transition: all 0.2s ease;
     cursor: pointer;
+    /* Reset any default entity styles */
+    padding: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    text-indent: -9999px;
+    overflow: hidden;
+}
+
+/* Hide any inner content like ms icons */
+.entities .entity.checkpoint-marker > * {
+    display: none !important;
 }
 
 .entities .entity.checkpoint-marker::after {
@@ -560,6 +575,7 @@
     height: 6px;
     background: white;
     border-radius: 50%;
+    display: block !important;
 }
 
 .entities .entity.checkpoint-marker:hover {

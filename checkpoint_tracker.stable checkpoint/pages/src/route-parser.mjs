@@ -524,18 +524,22 @@ function convertFitToRouteData(fitData) {
     if (fitData.records && fitData.records.length > 0) {
         const records = fitData.records;
 
-        // Debug: Log the structure of the first few records to understand field names
+        // Debug: Log the structure of records to understand available fields
         console.log('FIT records count:', records.length);
         if (records.length > 0) {
-            console.log('First record keys:', Object.keys(records[0]));
+            const firstKeys = Object.keys(records[0]);
+            console.log('First record fields:', firstKeys.join(', '));
             console.log('First record sample:', records[0]);
 
-            // Check a record in the middle too
-            if (records.length > 10) {
-                const midRecord = records[Math.floor(records.length / 2)];
-                console.log('Mid record keys:', Object.keys(midRecord));
-                console.log('Mid record sample:', midRecord);
-            }
+            // Show which coordinate fields are present
+            const coordFields = ['position_lat', 'position_long', 'lat', 'lng', 'latitude', 'longitude', 'x', 'y'];
+            const foundCoordFields = coordFields.filter(f => records[0][f] !== undefined);
+            console.log('Coordinate fields found:', foundCoordFields.length > 0 ? foundCoordFields.join(', ') : 'NONE');
+
+            // Show telemetry fields
+            const telemetryFields = ['distance', 'altitude', 'speed', 'power', 'heart_rate', 'cadence', 'timestamp'];
+            const foundTelemetryFields = telemetryFields.filter(f => records[0][f] !== undefined);
+            console.log('Telemetry fields found:', foundTelemetryFields.join(', ') || 'NONE');
         }
 
         // Initialize telemetry arrays
@@ -553,75 +557,82 @@ function convertFitToRouteData(fitData) {
         let hasGpsData = false;
 
         for (const record of records) {
-            // Extract GPS coordinates - try multiple possible field names
+            // Extract coordinates - try multiple possible field names
+            // Zwift stores position_lat/position_long, but we also check for raw x/y
             let lat = record.position_lat ?? record.lat ?? record.latitude;
             let lng = record.position_long ?? record.lng ?? record.lon ?? record.longitude;
 
-            // FitParser usually converts to degrees, but check for semicircles format
+            // If no lat/lng, check for raw x/y coordinates (Zwift internal format)
+            // These will be passed through to the coordinate converter
+            if ((lat === undefined || lat === null) && record.x !== undefined) {
+                lat = record.x;
+                lng = record.y;
+            }
+
+            // Accept any non-null coordinate values - let Sauce/map handle conversion
             if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
-                // Semicircles to degrees: value * (180 / 2^31)
-                // FitParser with our settings should already convert to degrees
-                // But if values are very large, they might be in semicircles
-                if (Math.abs(lat) > 180) {
+                // Only convert semicircles if values are extremely large (>2^30)
+                // This indicates raw semicircle format, not Zwift virtual coords
+                if (Math.abs(lat) > 1073741824) { // 2^30
                     lat = lat * (180 / Math.pow(2, 31));
                     lng = lng * (180 / Math.pow(2, 31));
                 }
 
-                // Only add valid coordinates
-                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                // Accept any valid numbers (don't filter out 0,0 - could be valid in Zwift world)
+                if (!isNaN(lat) && !isNaN(lng)) {
                     parseResult.coordinates.push([lat, lng]);
                     hasGpsData = true;
-
-                    // Extract telemetry at this point
-                    // Distance - convert to cm
-                    if (record.distance !== undefined && record.distance !== null) {
-                        telemetry.distance.push(Math.round(record.distance * 100)); // m to cm
-                    } else {
-                        telemetry.distance.push(telemetry.distance.length > 0 ?
-                            telemetry.distance[telemetry.distance.length - 1] : 0);
-                    }
-
-                    // Altitude - convert to cm (FitParser gives meters)
-                    if (record.altitude !== undefined && record.altitude !== null) {
-                        telemetry.altitude.push(Math.round(record.altitude * 100)); // m to cm
-                    } else if (record.enhanced_altitude !== undefined) {
-                        telemetry.altitude.push(Math.round(record.enhanced_altitude * 100));
-                    } else {
-                        telemetry.altitude.push(0);
-                    }
-
-                    // Speed - convert to cm/sec (FitParser gives m/s or km/h depending on settings)
-                    if (record.speed !== undefined && record.speed !== null) {
-                        // Assuming km/h from our settings, convert to cm/s
-                        telemetry.speed.push(Math.round(record.speed * 100000 / 3600)); // km/h to cm/s
-                    } else if (record.enhanced_speed !== undefined) {
-                        telemetry.speed.push(Math.round(record.enhanced_speed * 100000 / 3600));
-                    } else {
-                        telemetry.speed.push(0);
-                    }
-
-                    // Power
-                    telemetry.power.push(record.power || 0);
-
-                    // Heart rate
-                    telemetry.heartRate.push(record.heart_rate || 0);
-
-                    // Cadence
-                    telemetry.cadence.push(record.cadence || 0);
-
-                    // Time - elapsed seconds from start
-                    if (record.timestamp) {
-                        if (!startTime) {
-                            startTime = new Date(record.timestamp).getTime();
-                        }
-                        const elapsed = (new Date(record.timestamp).getTime() - startTime) / 1000;
-                        telemetry.time.push(elapsed);
-                    } else if (record.elapsed_time !== undefined) {
-                        telemetry.time.push(record.elapsed_time);
-                    } else {
-                        telemetry.time.push(telemetry.time.length);
-                    }
                 }
+            }
+
+            // Always extract telemetry (even for indoor activities without coordinates)
+            // Distance - convert to cm
+            if (record.distance !== undefined && record.distance !== null) {
+                telemetry.distance.push(Math.round(record.distance * 100)); // m to cm
+            } else {
+                telemetry.distance.push(telemetry.distance.length > 0 ?
+                    telemetry.distance[telemetry.distance.length - 1] : 0);
+            }
+
+            // Altitude - convert to cm (FitParser gives meters)
+            if (record.altitude !== undefined && record.altitude !== null) {
+                telemetry.altitude.push(Math.round(record.altitude * 100)); // m to cm
+            } else if (record.enhanced_altitude !== undefined) {
+                telemetry.altitude.push(Math.round(record.enhanced_altitude * 100));
+            } else {
+                telemetry.altitude.push(0);
+            }
+
+            // Speed - convert to cm/sec (FitParser gives m/s or km/h depending on settings)
+            if (record.speed !== undefined && record.speed !== null) {
+                // Assuming km/h from our settings, convert to cm/s
+                telemetry.speed.push(Math.round(record.speed * 100000 / 3600)); // km/h to cm/s
+            } else if (record.enhanced_speed !== undefined) {
+                telemetry.speed.push(Math.round(record.enhanced_speed * 100000 / 3600));
+            } else {
+                telemetry.speed.push(0);
+            }
+
+            // Power
+            telemetry.power.push(record.power || 0);
+
+            // Heart rate
+            telemetry.heartRate.push(record.heart_rate || 0);
+
+            // Cadence
+            telemetry.cadence.push(record.cadence || 0);
+
+            // Time - elapsed seconds from start
+            if (record.timestamp) {
+                if (!startTime) {
+                    startTime = new Date(record.timestamp).getTime();
+                }
+                const elapsed = (new Date(record.timestamp).getTime() - startTime) / 1000;
+                telemetry.time.push(elapsed);
+            } else if (record.elapsed_time !== undefined) {
+                telemetry.time.push(record.elapsed_time);
+            } else {
+                telemetry.time.push(telemetry.time.length);
             }
         }
 
