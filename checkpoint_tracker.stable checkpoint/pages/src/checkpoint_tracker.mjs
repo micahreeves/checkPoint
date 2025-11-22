@@ -6,7 +6,7 @@ import * as data from '/shared/sauce/data.mjs';
 import * as locale from '/shared/sauce/locale.mjs';
 
 // Import our enhanced modules
-import { parseRouteData, getWorldName, generateSampleRoute, WORLD_MAPPING } from './route-parser.mjs';
+import { parseRouteData, parseFitFile, getWorldName, generateSampleRoute, WORLD_MAPPING } from './route-parser.mjs';
 import { convertCoordinates } from './coordinate-converter.mjs';
 import { CheckpointManager } from './checkpoint-manager.mjs';
 import { initializeReplay, loadReplayData, updateReplayProgress, handleLiveAthleteUpdate, integrateWithMainApp } from './replay-ui-integration.mjs';
@@ -465,113 +465,190 @@ function updateTimingInfo() {
 }
 
 /**
- * Enhanced file loading with better error handling
+ * Check if a file is a supported route file
+ */
+function isSupportedRouteFile(file) {
+    const name = file.name.toLowerCase();
+    const type = file.type.toLowerCase();
+
+    return name.endsWith('.json') ||
+           name.endsWith('.fit') ||
+           type === 'application/json';
+}
+
+/**
+ * Get file type from file object
+ */
+function getFileType(file) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.fit')) return 'fit';
+    if (name.endsWith('.json') || file.type === 'application/json') return 'json';
+    return 'unknown';
+}
+
+/**
+ * Process a route file (JSON or FIT)
+ */
+async function processRouteFile(file) {
+    const fileType = getFileType(file);
+
+    showNotification(`Loading ${fileType.toUpperCase()} file: ${file.name}...`, 'info');
+
+    if (fileType === 'fit') {
+        // Handle FIT file
+        const reader = new FileReader();
+
+        return new Promise((resolve, reject) => {
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+                        throw new Error('FIT file is empty');
+                    }
+
+                    console.log(`Processing FIT file: ${file.name} (${arrayBuffer.byteLength} bytes)`);
+
+                    // Parse the FIT file
+                    const routeData = await parseFitFile(arrayBuffer);
+
+                    // Update the route name with filename if generic
+                    if (routeData.name === 'FIT Activity' || !routeData.name) {
+                        routeData.name = file.name.replace(/\.fit$/i, '');
+                    }
+
+                    await loadRoute(routeData);
+                    resolve(routeData);
+                } catch (error) {
+                    console.error('Error processing FIT file:', error);
+                    showNotification('Error processing FIT file: ' + error.message, 'error');
+                    reject(error);
+                }
+            };
+
+            reader.onerror = () => {
+                const error = new Error('Error reading FIT file');
+                showNotification(error.message, 'error');
+                reject(error);
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+    } else if (fileType === 'json') {
+        // Handle JSON file
+        const reader = new FileReader();
+
+        return new Promise((resolve, reject) => {
+            reader.onload = async (e) => {
+                try {
+                    const jsonText = e.target.result;
+                    if (!jsonText || jsonText.length === 0) {
+                        throw new Error('JSON file is empty');
+                    }
+
+                    const jsonData = JSON.parse(jsonText);
+                    if (!jsonData) {
+                        throw new Error('Failed to parse JSON - result is empty');
+                    }
+
+                    await loadRoute(jsonData);
+                    resolve(jsonData);
+                } catch (error) {
+                    console.error('Error parsing JSON:', error);
+                    showNotification('Error parsing JSON file: ' + error.message, 'error');
+                    reject(error);
+                }
+            };
+
+            reader.onerror = () => {
+                const error = new Error('Error reading JSON file');
+                showNotification(error.message, 'error');
+                reject(error);
+            };
+
+            reader.readAsText(file);
+        });
+
+    } else {
+        const error = new Error(`Unsupported file type. Please use .json or .fit files.`);
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
+/**
+ * Enhanced file loading with support for JSON and FIT files
  */
 function setupFileLoading() {
     const fileInput = document.getElementById('route-file-input');
     const loadButton = document.querySelector('.load-route');
-    
+
     if (!fileInput || !loadButton) {
         console.warn('File loading elements not found');
         return;
     }
-    
+
+    // Update file input to accept both JSON and FIT
+    fileInput.setAttribute('accept', '.json,.fit,application/json');
+
     loadButton.addEventListener('click', () => {
         fileInput.click();
     });
-    
-    fileInput.addEventListener('change', (e) => {
+
+    fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
-        if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-            showNotification('Please select a JSON file', 'error');
+
+        if (!isSupportedRouteFile(file)) {
+            showNotification('Please select a JSON or FIT file', 'error');
+            fileInput.value = '';
             return;
         }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const jsonText = e.target.result;
-                if (!jsonText || jsonText.length === 0) {
-                    throw new Error('File is empty');
-                }
-                
-                const jsonData = JSON.parse(jsonText);
-                if (!jsonData) {
-                    throw new Error('Failed to parse JSON - result is empty');
-                }
-                
-                loadRoute(jsonData);
-            } catch (error) {
-                console.error('Error parsing JSON:', error);
-                showNotification('Error parsing JSON file: ' + error.message, 'error');
-            }
-        };
-        
-        reader.onerror = () => {
-            showNotification('Error reading file', 'error');
-        };
-        
-        reader.readAsText(file);
+
+        try {
+            await processRouteFile(file);
+        } catch (error) {
+            console.error('File processing error:', error);
+        }
+
         fileInput.value = '';
     });
     
-    // Enhanced drag and drop support
+    // Enhanced drag and drop support for JSON and FIT files
     const mapContainer = document.querySelector('.map-container');
     if (!mapContainer) return;
-    
+
     mapContainer.addEventListener('dragover', (e) => {
         e.preventDefault();
         mapContainer.classList.add('drag-over');
     });
-    
+
     mapContainer.addEventListener('dragleave', (e) => {
         e.preventDefault();
         mapContainer.classList.remove('drag-over');
     });
-    
-    mapContainer.addEventListener('drop', (e) => {
+
+    mapContainer.addEventListener('drop', async (e) => {
         e.preventDefault();
         mapContainer.classList.remove('drag-over');
-        
+
         const files = e.dataTransfer.files;
         if (files.length === 0) {
             showNotification('No files dropped', 'error');
             return;
         }
-        
+
         const file = files[0];
-        if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-            showNotification('Please drop a JSON file', 'error');
+        if (!isSupportedRouteFile(file)) {
+            showNotification('Please drop a JSON or FIT file', 'error');
             return;
         }
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const jsonText = e.target.result;
-                if (!jsonText || jsonText.length === 0) {
-                    throw new Error('File is empty');
-                }
-                
-                const jsonData = JSON.parse(jsonText);
-                if (!jsonData) {
-                    throw new Error('Failed to parse JSON - result is empty');
-                }
-                
-                loadRoute(jsonData);
-            } catch (error) {
-                console.error('Error parsing JSON:', error);
-                showNotification('Error parsing JSON file: ' + error.message, 'error');
-            }
-        };
-        
-        reader.onerror = () => {
-            showNotification('Error reading file', 'error');
-        };
-        
-        reader.readAsText(file);
+
+        try {
+            await processRouteFile(file);
+        } catch (error) {
+            console.error('Drag-drop file processing error:', error);
+        }
     });
 }
 
@@ -927,7 +1004,7 @@ async function initialize() {
         setupLiveTracking();
         
         // Initial UI update
-        updateRouteInfo('No route loaded', 'Click 📁 to load route JSON or drag & drop');
+        updateRouteInfo('No route loaded', 'Click 📁 to load route (JSON/FIT) or drag & drop');
         updateCheckpointList();
         updateTimingInfo();
         

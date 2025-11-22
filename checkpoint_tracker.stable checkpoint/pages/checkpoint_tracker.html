@@ -9,6 +9,8 @@
         <title>Checkpoint Tracker</title>
 
         <script src="/pages/src/preloads.js"></script>
+        <!-- FIT file parser - must load before main module -->
+        <script src="./src/fit.parser.entry.js"></script>
 
         <link id="favicon" rel="shortcut icon" href="/images/favicon.png"/>
         <link rel="stylesheet" href="/pages/css/common.css"/>
@@ -27,7 +29,7 @@
                 <div class="title">Checkpoint Tracker</div>
                 <div class="filler"></div>
                 <div class="buttons">
-                    <div class="button load-route" title="Load Route JSON">📁</div>
+                    <div class="button load-route" title="Load Route (JSON or FIT)">📁</div>
                     <div class="button toggle-checkpoints active" title="Toggle Checkpoints">📍</div>
                     <a class="button" onClick="window.location.reload()" title="Reload">&#x21bb;</a>
                     <div title="Minimize" class="button minimize electron-only"><ms>minimize</ms></div>
@@ -56,13 +58,13 @@
                     <div class="status-overlay">
                         <div class="route-info">
                             <div class="route-name">No route loaded</div>
-                            <div class="route-stats">Click 📁 to load route JSON or drag & drop files</div>
+                            <div class="route-stats">Click 📁 to load route (JSON/FIT) or drag & drop</div>
                         </div>
                     </div>
                     
                     <!-- Drag overlay for file drops -->
                     <div class="drag-overlay hidden">
-                        <div>Drop JSON file here to load route</div>
+                        <div>Drop JSON or FIT file here to load route</div>
                     </div>
                 </div>
                 
@@ -99,11 +101,11 @@
             <div class="route-notification" style="display: none;"></div>
         </div>
         
-        <!-- Hidden file input for loading JSON -->
-        <input type="file" id="route-file-input" accept=".json,application/json" style="display: none;"/>
-        
+        <!-- Hidden file input for loading route files -->
+        <input type="file" id="route-file-input" accept=".json,.fit,application/json" style="display: none;"/>
+
         <div id="hintbar">
-            <div class="hint">Load a route JSON file, drag & drop, or manually add checkpoints. Live tracking shows progress automatically.</div>
+            <div class="hint">Load a route file (JSON or FIT), drag & drop, or manually add checkpoints. Live tracking shows progress automatically.</div>
         </div>
     </body>
 </html>
