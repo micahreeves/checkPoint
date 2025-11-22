@@ -398,13 +398,15 @@ export function parseFitFile(arrayBuffer) {
         }
 
         try {
+            // Use 'list' mode instead of 'cascade' to get all records
+            // 'cascade' mode groups data but may hide records
             const fitParser = new window.FitParser({
                 force: true,
                 speedUnit: 'km/h',
                 lengthUnit: 'm',
                 temperatureUnit: 'celsius',
                 elapsedRecordField: true,
-                mode: 'cascade'
+                mode: 'list'  // Changed from 'cascade' to get raw record data
             });
 
             fitParser.parse(arrayBuffer, (error, data) => {
@@ -522,6 +524,20 @@ function convertFitToRouteData(fitData) {
     if (fitData.records && fitData.records.length > 0) {
         const records = fitData.records;
 
+        // Debug: Log the structure of the first few records to understand field names
+        console.log('FIT records count:', records.length);
+        if (records.length > 0) {
+            console.log('First record keys:', Object.keys(records[0]));
+            console.log('First record sample:', records[0]);
+
+            // Check a record in the middle too
+            if (records.length > 10) {
+                const midRecord = records[Math.floor(records.length / 2)];
+                console.log('Mid record keys:', Object.keys(midRecord));
+                console.log('Mid record sample:', midRecord);
+            }
+        }
+
         // Initialize telemetry arrays
         const telemetry = {
             distance: [],      // in cm (to match Zwift format)
@@ -534,11 +550,12 @@ function convertFitToRouteData(fitData) {
         };
 
         let startTime = null;
+        let hasGpsData = false;
 
         for (const record of records) {
-            // Extract GPS coordinates (semicircles to degrees conversion if needed)
-            let lat = record.position_lat;
-            let lng = record.position_long;
+            // Extract GPS coordinates - try multiple possible field names
+            let lat = record.position_lat ?? record.lat ?? record.latitude;
+            let lng = record.position_long ?? record.lng ?? record.lon ?? record.longitude;
 
             // FitParser usually converts to degrees, but check for semicircles format
             if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
@@ -553,6 +570,7 @@ function convertFitToRouteData(fitData) {
                 // Only add valid coordinates
                 if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                     parseResult.coordinates.push([lat, lng]);
+                    hasGpsData = true;
 
                     // Extract telemetry at this point
                     // Distance - convert to cm
@@ -611,6 +629,15 @@ function convertFitToRouteData(fitData) {
 
         console.log(`Extracted ${parseResult.coordinates.length} GPS points from FIT file`);
         console.log(`Telemetry points: distance=${telemetry.distance.length}, altitude=${telemetry.altitude.length}`);
+        console.log(`Has GPS data: ${hasGpsData}`);
+
+        // If no GPS but we have telemetry, this might be an indoor activity
+        if (!hasGpsData && telemetry.distance.length > 0) {
+            console.warn('FIT file has telemetry but no GPS coordinates - may be indoor/trainer activity');
+            parseResult.metadata.isIndoorActivity = true;
+        }
+    } else {
+        console.warn('No records found in FIT file');
     }
 
     // Generate checkpoints from the data
@@ -654,7 +681,29 @@ function convertFitToRouteData(fitData) {
     }
 
     if (parseResult.coordinates.length === 0) {
-        throw new Error('No GPS coordinates found in FIT file. The file may not contain location data.');
+        // Provide a more informative error message
+        const recordCount = fitData.records?.length || 0;
+        const hasSession = !!(fitData.sessions && fitData.sessions.length > 0);
+        const hasLaps = !!(fitData.laps && fitData.laps.length > 0);
+
+        let errorDetails = `Records: ${recordCount}, Sessions: ${hasSession}, Laps: ${hasLaps}`;
+
+        // Check if this is an indoor/Zwift activity
+        if (recordCount > 0 && fitData.records[0]) {
+            const sampleKeys = Object.keys(fitData.records[0]).join(', ');
+            errorDetails += `\nSample record fields: ${sampleKeys}`;
+
+            // If it has power/HR but no GPS, it's likely indoor
+            const hasMetrics = fitData.records[0].power !== undefined ||
+                fitData.records[0].heart_rate !== undefined ||
+                fitData.records[0].cadence !== undefined;
+            if (hasMetrics) {
+                errorDetails += '\nThis appears to be an indoor/trainer activity without GPS.';
+                errorDetails += '\nZwift activities may not contain exportable GPS coordinates.';
+            }
+        }
+
+        throw new Error(`No GPS coordinates found in FIT file.\n${errorDetails}`);
     }
 
     return parseResult;
