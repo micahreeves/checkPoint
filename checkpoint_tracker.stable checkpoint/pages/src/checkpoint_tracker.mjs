@@ -99,17 +99,44 @@ async function loadRoute(jsonData) {
         if (!parsedRouteData.coordinates || !Array.isArray(parsedRouteData.coordinates) || parsedRouteData.coordinates.length === 0) {
             throw new Error('No valid coordinates found in route data');
         }
-        
-        // Convert coordinates
+
+        // If route has no world info, try to get it from the current Zwift session BEFORE converting coordinates
+        if (!parsedRouteData.worldId && !parsedRouteData.courseId) {
+            try {
+                const watchingData = await common.rpc.getAthleteData('watching');
+                if (watchingData && watchingData.courseId) {
+                    console.log(`Route has no world - using watching athlete's world: courseId=${watchingData.courseId}`);
+                    parsedRouteData.courseId = watchingData.courseId;
+                    // Also try to get worldId from state if available
+                    if (watchingData.state && watchingData.state.worldId) {
+                        parsedRouteData.worldId = watchingData.state.worldId;
+                    }
+                } else {
+                    // Try self athlete
+                    const selfData = await common.rpc.getAthleteData('self');
+                    if (selfData && selfData.courseId) {
+                        console.log(`Route has no world - using self athlete's world: courseId=${selfData.courseId}`);
+                        parsedRouteData.courseId = selfData.courseId;
+                        if (selfData.state && selfData.state.worldId) {
+                            parsedRouteData.worldId = selfData.state.worldId;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not get world from Zwift session:', error);
+            }
+        }
+
+        // Convert coordinates (now using world from Zwift session if available)
         let coordinates;
         try {
             coordinates = convertCoordinates(parsedRouteData.coordinates, parsedRouteData.worldId, parsedRouteData.courseId, settings);
             console.log(`Converted ${coordinates.length} coordinates`);
-            
+
             if (coordinates.length === 0) {
                 throw new Error('Coordinate conversion resulted in empty array');
             }
-            
+
             if (settings.debugMode) {
                 console.log('First few converted coordinates:', coordinates.slice(0, 3));
                 console.log('Last few converted coordinates:', coordinates.slice(-3));
@@ -119,39 +146,12 @@ async function loadRoute(jsonData) {
             coordinates = parsedRouteData.coordinates;
             console.log('Using original coordinates as fallback');
         }
-        
+
         // Clear existing route BEFORE setting up new one
         clearRoute();
 
         // NOW set the global routeData after we know everything worked
         routeData = parsedRouteData;
-
-        // If route has no world info, try to get it from the current Zwift session
-        if (!routeData.worldId && !routeData.courseId) {
-            try {
-                const watchingData = await common.rpc.getAthleteData('watching');
-                if (watchingData && watchingData.courseId) {
-                    console.log(`Route has no world - using watching athlete's world: courseId=${watchingData.courseId}`);
-                    routeData.courseId = watchingData.courseId;
-                    // Also try to get worldId from state if available
-                    if (watchingData.state && watchingData.state.worldId) {
-                        routeData.worldId = watchingData.state.worldId;
-                    }
-                } else {
-                    // Try self athlete
-                    const selfData = await common.rpc.getAthleteData('self');
-                    if (selfData && selfData.courseId) {
-                        console.log(`Route has no world - using self athlete's world: courseId=${selfData.courseId}`);
-                        routeData.courseId = selfData.courseId;
-                        if (selfData.state && selfData.state.worldId) {
-                            routeData.worldId = selfData.state.worldId;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn('Could not get world from Zwift session:', error);
-            }
-        }
 
         // Set up the map world if possible
         try {
