@@ -476,8 +476,8 @@ function updateCheckpointList() {
             deltaHtml = `<span class="checkpoint-delta ${deltaClass}">${deltaSign}${H.timer(Math.abs(cp.delta) / 1000)}</span>`;
         }
 
-        // Format FIT file reference time (stored in seconds)
-        const refTime = cp.time !== null && cp.time !== undefined ? H.timer(cp.time) : '--:--';
+        // Format FIT file reference time (stored in seconds as targetTime)
+        const refTime = cp.targetTime !== null && cp.targetTime !== undefined ? H.timer(cp.targetTime) : '--:--';
 
         return `
             <div class="checkpoint-item ${typeClass} ${completedClass} ${activeClass}" data-checkpoint-id="${cp.id}">
