@@ -85,52 +85,79 @@ export function convertLatLngToZwift(coord, worldId, courseId) {
     }
     
     console.log(`Converting coordinate [${lat}, ${lng}] using id: ${id} (courseId: ${courseId}, worldId: ${worldId})`);
-    
-    // World-specific conversion parameters (these may need fine-tuning)
-    const conversions = {
-        1: { // Watopia
+
+    // World-specific conversion parameters
+    // IMPORTANT: courseId and worldId are different in Zwift!
+    // From Sauce: {worldId: 4, courseId: 8, name: 'New York'}
+    //             {worldId: 8, courseId: 12, name: 'Crit City'}
+    const conversionsByWorldId = {
+        1: { // Watopia (worldId)
             latScale: 100000, lngScale: 100000,
             latOffset: 0, lngOffset: 0
         },
-        8: { // Crit City (your data)
-            latScale: 500000, lngScale: 500000,
-            latOffset: 10.384, lngOffset: -165.802
-        },
-        12: { // Crit City by courseId
-            latScale: 500000, lngScale: 500000,
-            latOffset: 10.384, lngOffset: -165.802
-        },
-        4: { // New York
+        4: { // New York (worldId)
             latScale: 200000, lngScale: 200000,
             latOffset: -40.7, lngOffset: 74
         },
-        3: { // London
+        8: { // Crit City (worldId)
+            latScale: 500000, lngScale: 500000,
+            latOffset: 10.384, lngOffset: -165.802
+        },
+        3: { // London (worldId)
             latScale: 150000, lngScale: 150000,
             latOffset: -51.5, lngOffset: 0
         },
-        7: { // Yorkshire
+        7: { // Yorkshire (worldId)
             latScale: 180000, lngScale: 180000,
             latOffset: -53.8, lngOffset: 1.5
         }
     };
-    
-    // Default to Crit City if no valid ID or mapping found
-    const conv = (id !== null && conversions[id]) ? conversions[id] : conversions[12];
+
+    // CourseId to WorldId mapping (from Sauce4Zwift)
+    const courseIdToWorldId = {
+        6: 1,   // Watopia
+        2: 2,   // Richmond
+        7: 3,   // London
+        8: 4,   // New York
+        9: 5,   // Innsbruck
+        10: 6,  // Bologna
+        11: 7,  // Yorkshire
+        12: 8,  // Crit City
+        13: 9,  // Makuri Islands
+        14: 10, // France
+        15: 11, // Paris
+        16: 12, // Gravel Mountain
+        17: 13  // Scotland
+    };
+
+    // Convert courseId to worldId if needed
+    let effectiveWorldId = null;
+    if (courseId !== undefined && courseId !== null && !isNaN(courseId)) {
+        effectiveWorldId = courseIdToWorldId[courseId] || courseId;
+        console.log(`CourseId ${courseId} maps to worldId ${effectiveWorldId}`);
+    } else if (worldId !== undefined && worldId !== null && !isNaN(worldId)) {
+        effectiveWorldId = worldId;
+    }
+
+    // Default to Crit City (worldId 8) if no valid ID or mapping found
+    const conv = (effectiveWorldId !== null && conversionsByWorldId[effectiveWorldId])
+        ? conversionsByWorldId[effectiveWorldId]
+        : conversionsByWorldId[8];
     
     try {
         const x = (lng - conv.lngOffset) * conv.lngScale;
         const y = (lat - conv.latOffset) * conv.latScale;
-        
+
         // Validate the result
         if (isNaN(x) || isNaN(y)) {
             console.warn('Conversion resulted in NaN values:', { lat, lng, conv, x, y });
             return [0, 0];
         }
-        
-        if (id === null) {
+
+        if (effectiveWorldId === null) {
             console.warn(`No valid world/course ID provided, using default Crit City conversion`);
         }
-        
+
         return [x, y];
     } catch (error) {
         console.error('Error in coordinate conversion:', error);
