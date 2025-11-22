@@ -748,10 +748,39 @@ function setupFileLoading() {
  * Setup map controls
  */
 function setupMapControls() {
+    const zoomInBtn = document.querySelector('.zoom-in');
+    const zoomOutBtn = document.querySelector('.zoom-out');
     const autoHeadingBtn = document.querySelector('.toggle-auto-heading');
     const autoCenterBtn = document.querySelector('.toggle-auto-center');
     const fitRouteBtn = document.querySelector('.fit-route');
-    
+
+    // Zoom controls
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', () => {
+            if (zwiftMap) {
+                try {
+                    const currentZoom = zwiftMap.zoom || 1;
+                    zwiftMap.setZoom(currentZoom * 1.25); // Zoom in by 25%
+                } catch (error) {
+                    console.warn('Error zooming in:', error);
+                }
+            }
+        });
+    }
+
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', () => {
+            if (zwiftMap) {
+                try {
+                    const currentZoom = zwiftMap.zoom || 1;
+                    zwiftMap.setZoom(currentZoom * 0.8); // Zoom out by 20%
+                } catch (error) {
+                    console.warn('Error zooming out:', error);
+                }
+            }
+        });
+    }
+
     if (autoHeadingBtn) {
         autoHeadingBtn.addEventListener('click', () => {
             settings.autoHeading = !settings.autoHeading;
