@@ -63,6 +63,36 @@ function vecDist3d(a, b) {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+/**
+ * Haversine distance for real GPS coordinates
+ * Returns distance in meters
+ */
+function haversineDistance(a, b) {
+    const R = 6371000; // Earth's radius in meters
+    const lat1 = a[0] * Math.PI / 180;
+    const lat2 = b[0] * Math.PI / 180;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLng = (b[1] - a[1]) * Math.PI / 180;
+
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+    const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+    return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Detect if coordinates are real GPS (lat/lng in degrees)
+ * Real GPS: lat typically -90 to 90, lng -180 to 180
+ * Zwift virtual: much larger values (thousands)
+ */
+function isRealGpsCoordinates(coordinates) {
+    if (!coordinates || coordinates.length === 0) return false;
+    const sample = coordinates[0];
+    if (!sample || sample.length < 2) return false;
+    // Real GPS lat is -90 to 90, lng is -180 to 180
+    return Math.abs(sample[0]) <= 90 && Math.abs(sample[1]) <= 180;
+}
+
 function lerp(t, a, b) {
     const s = 1 - t;
     return [
@@ -83,6 +113,7 @@ export class CurvePath {
         this._distanceCache = new LRUCache(500);
         this._cumulativeDistances = null;
         this._totalDistance = null;
+        this._isRealGps = isRealGpsCoordinates(coordinates);
 
         // Pre-compute cumulative distances
         if (this.coordinates.length > 0) {
@@ -97,12 +128,16 @@ export class CurvePath {
         const distances = [0];
         let totalDist = 0;
 
+        // Choose distance function based on coordinate type
+        const distFn = this._isRealGps ? haversineDistance : vecDist2d;
+        console.log(`CurvePath: Using ${this._isRealGps ? 'haversine (GPS)' : 'euclidean (Zwift)'} distance`);
+
         for (let i = 1; i < this.coordinates.length; i++) {
             const prev = this.coordinates[i - 1];
             const curr = this.coordinates[i];
 
             if (prev && curr) {
-                const segmentDist = vecDist2d(prev, curr);
+                const segmentDist = distFn(prev, curr);
                 totalDist += segmentDist;
             }
             distances.push(totalDist);
@@ -111,7 +146,7 @@ export class CurvePath {
         this._cumulativeDistances = distances;
         this._totalDistance = totalDist;
 
-        console.log(`CurvePath: Computed ${distances.length} cumulative distances, total: ${totalDist.toFixed(2)}`);
+        console.log(`CurvePath: Computed ${distances.length} cumulative distances, total: ${(totalDist / 1000).toFixed(2)} km`);
     }
 
     /**
@@ -223,20 +258,24 @@ export class CurvePath {
             return { distance: Infinity, nearestIndex: -1, nearestPoint: null, progress: 0 };
         }
 
+        const distFn = this._isRealGps ? haversineDistance : vecDist2d;
+        // For GPS, "close enough" is ~10 meters; for Zwift, use 1 unit
+        const closeEnough = this._isRealGps ? 10 : 1;
+
         let minDist = Infinity;
         let nearestIndex = 0;
         let nearestPoint = this.coordinates[0];
 
         for (let i = 0; i < this.coordinates.length; i++) {
             const coord = this.coordinates[i];
-            const dist = vecDist2d(point, coord);
+            const dist = distFn(point, coord);
 
             if (dist < minDist) {
                 minDist = dist;
                 nearestIndex = i;
                 nearestPoint = coord;
 
-                if (dist < searchRadius && dist < 1) {
+                if (dist < searchRadius && dist < closeEnough) {
                     // Close enough, stop searching
                     break;
                 }

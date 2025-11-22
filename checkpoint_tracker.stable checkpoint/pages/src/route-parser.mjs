@@ -50,7 +50,7 @@ export function parseRouteData(jsonData) {
             return parseZwiftEventResults(jsonData);
         }
         
-        // Format 2: Direct route data
+        // Format 2: Direct route data (also handles pre-parsed FIT data)
         if (jsonData.coordinates && Array.isArray(jsonData.coordinates)) {
             console.log('Detected simple coordinates format');
             parseResult.coordinates = jsonData.coordinates;
@@ -58,6 +58,10 @@ export function parseRouteData(jsonData) {
             parseResult.checkpoints = jsonData.checkpoints || [];
             parseResult.worldId = jsonData.worldId || null;
             parseResult.courseId = jsonData.courseId || null;
+            // Preserve telemetry and metadata from pre-parsed data (e.g., FIT files)
+            parseResult.telemetry = jsonData.telemetry || null;
+            parseResult.metadata = jsonData.metadata || {};
+            parseResult.routeId = jsonData.routeId || null;
             return parseResult;
         }
         
