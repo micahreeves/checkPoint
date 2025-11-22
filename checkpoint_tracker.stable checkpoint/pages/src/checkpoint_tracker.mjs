@@ -161,10 +161,15 @@ async function loadRoute(jsonData) {
             try {
                 await checkpointManager.loadCheckpointsFromData(routeData.checkpoints, routeData);
                 updateCheckpointList();
+                initializeProgressBar(); // Initialize progress bar with checkpoint markers
             } catch (error) {
                 console.warn('Failed to load checkpoints:', error);
                 showNotification('Route loaded but checkpoints failed: ' + error.message, 'info');
             }
+        } else {
+            // Still initialize route for progress tracking even without checkpoints
+            checkpointManager.initializeWithRoute(routeData);
+            initializeProgressBar();
         }
         
         // 🆕 NEW: Load replay data for Ghost Rider
@@ -392,41 +397,53 @@ function updateRouteInfo(name, stats) {
 }
 
 /**
- * Update checkpoint list UI
+ * Update checkpoint list UI with split times
  */
 function updateCheckpointList() {
     const listEl = document.querySelector('.checkpoint-list');
     if (!listEl) return;
-    
+
     const checkpoints = checkpointManager?.checkpoints || [];
-    
+
     if (checkpoints.length === 0) {
         listEl.innerHTML = '<div class="checkpoint-placeholder">No checkpoints loaded</div>';
         return;
     }
-    
+
     listEl.innerHTML = checkpoints.map((cp, index) => {
         if (!cp) return '';
-        
+
         const typeClass = cp.type || 'checkpoint';
         const completedClass = cp.completed ? 'completed' : '';
         const activeClass = cp.active ? 'active' : '';
-        
+
+        // Format times
+        const totalTime = cp.currentTime ? H.timer(cp.currentTime / 1000) : '--:--';
+        const splitTime = cp.splitTime ? H.timer(cp.splitTime / 1000) : '';
+
+        // Format delta (ahead/behind)
+        let deltaHtml = '';
+        if (cp.delta !== undefined && cp.delta !== null) {
+            const deltaClass = cp.delta < 0 ? 'ahead' : 'behind';
+            const deltaSign = cp.delta < 0 ? '' : '+';
+            deltaHtml = `<span class="checkpoint-delta ${deltaClass}">${deltaSign}${H.timer(Math.abs(cp.delta) / 1000)}</span>`;
+        }
+
         return `
             <div class="checkpoint-item ${typeClass} ${completedClass} ${activeClass}" data-checkpoint-id="${cp.id}">
                 <div class="checkpoint-info">
                     <div class="checkpoint-name">${cp.name || 'Unnamed'}</div>
-                    <div class="checkpoint-distance">${H.distance(cp.distance || 0, {suffix: true})}</div>
-                    ${cp.altitude ? `<div class="checkpoint-altitude">${H.elevation(cp.altitude, {suffix: true})}</div>` : ''}
+                    <div class="checkpoint-distance">${H.distance(cp.distance || 0, {suffix: true})}${cp.altitude ? ` · ${H.elevation(cp.altitude, {suffix: true})}` : ''}</div>
+                    ${cp.completed && splitTime ? `<div class="checkpoint-split">Split: ${splitTime}${deltaHtml}</div>` : ''}
                 </div>
-                <div class="checkpoint-time">${cp.time ? H.timer(cp.time / 1000) : '--:--'}</div>
+                <div class="checkpoint-time">${totalTime}</div>
                 <div class="checkpoint-actions">
                     <button class="btn delete-checkpoint" data-checkpoint-id="${cp.id}" title="Delete checkpoint">×</button>
                 </div>
             </div>
         `;
     }).filter(html => html).join('');
-    
+
     // Add event listeners
     listEl.querySelectorAll('.delete-checkpoint').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -435,6 +452,7 @@ function updateCheckpointList() {
                 const deleted = checkpointManager.deleteCheckpoint(checkpointId);
                 if (deleted) {
                     updateCheckpointList();
+                    initializeProgressBar(); // Refresh progress bar
                     showNotification(`Deleted checkpoint: ${deleted.name}`, 'info');
                 }
             }
@@ -448,20 +466,94 @@ function updateCheckpointList() {
 function updateTimingInfo() {
     const currentSegmentEl = document.querySelector('.segment-time');
     const totalTimeEl = document.querySelector('.time-value');
-    
+
     const timing = checkpointManager?.getTimingInfo() || {
         totalTime: 0,
         segmentTime: 0,
         hasStarted: false
     };
-    
+
     if (currentSegmentEl) {
         currentSegmentEl.textContent = timing.hasStarted ? H.timer(timing.segmentTime / 1000) : '--:--';
     }
-    
+
     if (totalTimeEl) {
         totalTimeEl.textContent = timing.hasStarted ? H.timer(timing.totalTime / 1000) : '--:--';
     }
+}
+
+/**
+ * Update progress bar display
+ */
+function updateProgressBar(progress = 0, distance = 0) {
+    const container = document.querySelector('.progress-bar-container');
+    if (!container) return;
+
+    // Show progress bar if we have route data
+    if (routeData && routeData.coordinates && routeData.coordinates.length > 0) {
+        container.style.display = 'flex';
+    } else {
+        container.style.display = 'none';
+        return;
+    }
+
+    const totalDistance = checkpointManager?.curvePath?.totalDistance || 0;
+    const progressPercent = Math.min(progress * 100, 100);
+
+    // Update fill bar
+    const fillEl = container.querySelector('.progress-bar-fill');
+    if (fillEl) {
+        fillEl.style.width = `${progressPercent}%`;
+    }
+
+    // Update athlete marker
+    const markerEl = container.querySelector('.progress-athlete-marker');
+    if (markerEl) {
+        markerEl.style.left = `${progressPercent}%`;
+    }
+
+    // Update header info
+    const distanceEl = container.querySelector('.progress-distance');
+    const percentEl = container.querySelector('.progress-percent');
+    const remainingEl = container.querySelector('.progress-remaining');
+
+    if (distanceEl) {
+        distanceEl.textContent = H.distance(distance, { suffix: true });
+    }
+    if (percentEl) {
+        percentEl.textContent = `${progressPercent.toFixed(1)}%`;
+    }
+    if (remainingEl && totalDistance > 0) {
+        const remaining = Math.max(0, totalDistance - distance);
+        remainingEl.textContent = `${H.distance(remaining, { suffix: true })} remaining`;
+    }
+}
+
+/**
+ * Initialize progress bar with checkpoint markers
+ */
+function initializeProgressBar() {
+    const container = document.querySelector('.progress-bar-container');
+    const checkpointsEl = container?.querySelector('.progress-bar-checkpoints');
+
+    if (!container || !checkpointsEl || !checkpointManager) return;
+
+    // Clear existing markers
+    checkpointsEl.innerHTML = '';
+
+    // Add markers for each checkpoint
+    const checkpoints = checkpointManager.checkpoints || [];
+    for (const cp of checkpoints) {
+        const progress = cp.progress || 0;
+        const marker = document.createElement('div');
+        marker.className = `progress-checkpoint-marker ${cp.type || ''} ${cp.completed ? 'completed' : ''}`;
+        marker.style.left = `${progress * 100}%`;
+        marker.title = `${cp.name} - ${H.distance(cp.distance, { suffix: true })}`;
+        checkpointsEl.appendChild(marker);
+    }
+
+    // Show the progress bar
+    container.style.display = 'flex';
 }
 
 /**
@@ -901,15 +993,25 @@ function setupLiveTracking() {
                 }
             }
             
-            // Check checkpoint progress
+            // Check checkpoint progress using new updateProgress method
             const watchingState = states.find(s => s && s.athleteId === (watchingId || athleteId));
             if (watchingState && checkpointManager) {
                 try {
-                    const result = checkpointManager.checkCheckpointProgress(watchingState);
-                    if (result.reached && settings.checkpointAlerts) {
-                        showNotification(`Checkpoint reached: ${result.checkpoint.name}!`, 'success');
+                    const result = checkpointManager.updateProgress(watchingState);
+
+                    // Handle reached checkpoints
+                    if (result.reached && result.reached.length > 0 && settings.checkpointAlerts) {
+                        for (const checkpoint of result.reached) {
+                            const splitInfo = checkpoint.splitTime ?
+                                ` (Split: ${H.timer(checkpoint.splitTime / 1000)})` : '';
+                            showNotification(`Checkpoint reached: ${checkpoint.name}!${splitInfo}`, 'success');
+                        }
                         updateCheckpointList();
                     }
+
+                    // Update progress bar
+                    updateProgressBar(result.currentProgress, result.currentDistance);
+
                 } catch (error) {
                     console.warn('Error checking checkpoint progress:', error);
                 }

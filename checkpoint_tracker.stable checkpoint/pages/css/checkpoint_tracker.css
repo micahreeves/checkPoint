@@ -530,3 +530,379 @@
 #content .checkpoint-list::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
 }
+
+/* ============================================
+   Enhanced Checkpoint Marker Styles
+   ============================================ */
+
+.entities .entity.checkpoint-marker {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    margin-left: -9px;
+    margin-top: -9px;
+    border-radius: 50%;
+    background-color: var(--checkpoint-color, #ffffff);
+    border: 3px solid white;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    z-index: 100;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.entities .entity.checkpoint-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+}
+
+.entities .entity.checkpoint-marker:hover {
+    transform: scale(1.3);
+    z-index: 150;
+}
+
+.entities .entity.checkpoint-marker.start {
+    background-color: #00ff00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+}
+
+.entities .entity.checkpoint-marker.finish {
+    background-color: #ff0000;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+}
+
+.entities .entity.checkpoint-marker.split {
+    background-color: #ffaa00;
+    box-shadow: 0 0 12px rgba(255, 170, 0, 0.7);
+}
+
+.entities .entity.checkpoint-marker.lap {
+    background-color: #00aaff;
+    box-shadow: 0 0 12px rgba(0, 170, 255, 0.7);
+}
+
+.entities .entity.checkpoint-marker.active {
+    animation: checkpoint-pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(255, 193, 7, 1);
+}
+
+.entities .entity.checkpoint-marker.completed {
+    opacity: 0.6;
+    filter: grayscale(50%);
+}
+
+.entities .entity.checkpoint-marker.completed::before {
+    content: '✓';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #28a745;
+    color: white;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+@keyframes checkpoint-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px var(--checkpoint-color, #ffc107);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 25px var(--checkpoint-color, #ffc107);
+    }
+}
+
+/* ============================================
+   Segment Marker Styles
+   ============================================ */
+
+.entities .entity.segment-marker {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    margin-left: -12px;
+    margin-top: -12px;
+    z-index: 90;
+    transition: all 0.2s ease;
+}
+
+.entities .entity.segment-marker.segment-start {
+    border-left: 4px solid var(--segment-color, #ff00ff);
+    border-top: 4px solid var(--segment-color, #ff00ff);
+    border-bottom: 4px solid transparent;
+    border-right: 4px solid transparent;
+    background: transparent;
+    transform: rotate(45deg);
+}
+
+.entities .entity.segment-marker.segment-end {
+    border-right: 4px solid var(--segment-color, #ff00ff);
+    border-bottom: 4px solid var(--segment-color, #ff00ff);
+    border-top: 4px solid transparent;
+    border-left: 4px solid transparent;
+    background: transparent;
+    transform: rotate(45deg);
+}
+
+/* ============================================
+   Progress Bar Styles
+   ============================================ */
+
+#content .progress-bar-container {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+    padding: 8px 12px;
+    z-index: 1000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#content .progress-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#content .progress-bar-track {
+    position: relative;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+#content .progress-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #00d4ff);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+}
+
+#content .progress-bar-checkpoints {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+#content .progress-checkpoint-marker {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateX(-50%);
+}
+
+#content .progress-checkpoint-marker.completed {
+    background: #28a745;
+}
+
+#content .progress-checkpoint-marker.start {
+    background: #00ff00;
+}
+
+#content .progress-checkpoint-marker.finish {
+    background: #ff0000;
+}
+
+#content .progress-athlete-marker {
+    position: absolute;
+    top: -3px;
+    width: 8px;
+    height: 18px;
+    background: #ffc107;
+    border: 2px solid white;
+    border-radius: 4px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+    transition: left 0.3s ease;
+}
+
+/* ============================================
+   Split Times Panel Styles
+   ============================================ */
+
+#content .split-times-panel {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#content .split-times-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--theme-fg);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#content .split-time-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+#content .split-time-row:last-child {
+    margin-bottom: 0;
+}
+
+#content .split-time-name {
+    flex: 1;
+    color: var(--theme-fg);
+    font-weight: 500;
+}
+
+#content .split-time-value {
+    font-family: monospace;
+    color: var(--theme-primary);
+    min-width: 60px;
+    text-align: right;
+}
+
+#content .split-time-delta {
+    font-family: monospace;
+    min-width: 50px;
+    text-align: right;
+    font-size: 11px;
+}
+
+#content .split-time-delta.ahead {
+    color: #28a745;
+}
+
+#content .split-time-delta.behind {
+    color: #dc3545;
+}
+
+/* ============================================
+   Segment Panel Styles
+   ============================================ */
+
+#content .segments-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--theme-border);
+}
+
+#content .segment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: rgba(255, 0, 255, 0.1);
+    border: 1px solid rgba(255, 0, 255, 0.3);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+#content .segment-item.active {
+    background: rgba(255, 0, 255, 0.25);
+    border-color: rgba(255, 0, 255, 0.6);
+    animation: segment-glow 2s ease-in-out infinite;
+}
+
+#content .segment-item.completed {
+    opacity: 0.7;
+    background: rgba(108, 117, 125, 0.1);
+    border-color: rgba(108, 117, 125, 0.3);
+}
+
+@keyframes segment-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 0, 255, 0.3); }
+    50% { box-shadow: 0 0 15px rgba(255, 0, 255, 0.6); }
+}
+
+#content .segment-name {
+    font-weight: 500;
+    color: var(--theme-fg);
+}
+
+#content .segment-distance {
+    font-size: 10px;
+    color: var(--theme-fg-secondary);
+}
+
+#content .segment-time {
+    font-family: monospace;
+    color: #ff00ff;
+}
+
+/* ============================================
+   Checkpoint Type Indicators
+   ============================================ */
+
+#content .checkpoint-item.start .checkpoint-name::before {
+    content: '🏁 ';
+}
+
+#content .checkpoint-item.finish .checkpoint-name::before {
+    content: '🎯 ';
+}
+
+#content .checkpoint-item.split .checkpoint-name::before {
+    content: '⏱️ ';
+}
+
+#content .checkpoint-item.lap .checkpoint-name::before {
+    content: '🔄 ';
+}
+
+/* Split time display in checkpoint item */
+#content .checkpoint-item .checkpoint-split {
+    font-size: 10px;
+    color: var(--theme-fg-secondary);
+    font-family: monospace;
+}
+
+#content .checkpoint-item .checkpoint-delta {
+    font-size: 10px;
+    font-family: monospace;
+    margin-left: 6px;
+}
+
+#content .checkpoint-item .checkpoint-delta.ahead {
+    color: #28a745;
+}
+
+#content .checkpoint-item .checkpoint-delta.behind {
+    color: #dc3545;
+}
