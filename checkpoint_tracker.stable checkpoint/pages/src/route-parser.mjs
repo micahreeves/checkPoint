@@ -418,11 +418,44 @@ export function parseFitFile(arrayBuffer) {
                     return;
                 }
 
+                // Debug: Log ALL keys in the parsed data to see structure
+                console.log('FIT file parsed - ALL available keys:', Object.keys(data));
+                console.log('FIT file parsed - Full data structure:', data);
+
+                // Check various possible data locations
+                const possibleRecordSources = {
+                    records: data.records,
+                    activity: data.activity,
+                    record: data.record,
+                    points: data.points,
+                    trackpoints: data.trackpoints,
+                    data: data.data
+                };
+
+                console.log('FIT possible record sources:', Object.fromEntries(
+                    Object.entries(possibleRecordSources).map(([k, v]) => [k, v ? (Array.isArray(v) ? v.length : typeof v) : 'undefined'])
+                ));
+
+                // If records is empty, check if data is nested differently
+                if ((!data.records || data.records.length === 0) && data.activity) {
+                    console.log('Found activity object, checking for nested records...');
+                    if (data.activity.sessions) {
+                        data.sessions = data.activity.sessions;
+                    }
+                    if (data.activity.laps) {
+                        data.laps = data.activity.laps;
+                    }
+                    if (data.activity.records) {
+                        data.records = data.activity.records;
+                    }
+                }
+
                 console.log('FIT file parsed successfully:', {
                     hasRecords: !!(data.records && data.records.length),
                     recordCount: data.records?.length || 0,
                     hasSessions: !!(data.sessions && data.sessions.length),
-                    hasLaps: !!(data.laps && data.laps.length)
+                    hasLaps: !!(data.laps && data.laps.length),
+                    firstRecord: data.records?.[0] || 'none'
                 });
 
                 try {
