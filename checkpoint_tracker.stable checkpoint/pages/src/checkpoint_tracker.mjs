@@ -476,14 +476,21 @@ function updateCheckpointList() {
             deltaHtml = `<span class="checkpoint-delta ${deltaClass}">${deltaSign}${H.timer(Math.abs(cp.delta) / 1000)}</span>`;
         }
 
+        // Format FIT file reference time (stored in seconds)
+        const refTime = cp.time !== null && cp.time !== undefined ? H.timer(cp.time) : '--:--';
+
         return `
             <div class="checkpoint-item ${typeClass} ${completedClass} ${activeClass}" data-checkpoint-id="${cp.id}">
                 <div class="checkpoint-info">
                     <div class="checkpoint-name">${cp.name || 'Unnamed'}</div>
-                    <div class="checkpoint-distance">${H.distance(cp.distance || 0, {suffix: true})}${cp.altitude ? ` · ${H.elevation(cp.altitude, {suffix: true})}` : ''}</div>
+                    <div class="checkpoint-distance">${H.distance(cp.distance || 0, {suffix: true})}</div>
+                    <div class="checkpoint-times">
+                        <span class="ref-time" title="FIT file reference time">Ref: ${refTime}</span>
+                        ${cp.completed ? `<span class="rider-time" title="Your time">You: ${totalTime}</span>` : ''}
+                    </div>
                     ${cp.completed && splitTime ? `<div class="checkpoint-split">Split: ${splitTime}${deltaHtml}</div>` : ''}
                 </div>
-                <div class="checkpoint-time">${totalTime}</div>
+                <div class="checkpoint-time">${cp.completed ? '' : totalTime}</div>
                 <div class="checkpoint-actions">
                     <button class="btn delete-checkpoint" data-checkpoint-id="${cp.id}" title="Delete checkpoint">×</button>
                 </div>

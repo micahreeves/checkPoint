@@ -260,6 +260,22 @@
     color: var(--theme-fg-secondary);
 }
 
+#content .checkpoint-times {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 11px;
+    font-family: monospace;
+}
+
+#content .checkpoint-times .ref-time {
+    color: #6ea8fe;
+}
+
+#content .checkpoint-times .rider-time {
+    color: #75b798;
+}
+
 #content .checkpoint-altitude {
     font-size: 10px;
     color: var(--theme-fg-secondary);
