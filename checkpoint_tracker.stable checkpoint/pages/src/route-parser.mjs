@@ -6,6 +6,7 @@ import * as locale from '/shared/sauce/locale.mjs';
 const H = locale.human;
 
 // Use these IDs for current Zwift maps:
+// World mapping by worldId
 export const WORLD_MAPPING = {
     1: { worldId: 1, name: "Watopia" },
     2: { worldId: 2, name: "Richmond" },
@@ -18,7 +19,26 @@ export const WORLD_MAPPING = {
     9: { worldId: 9, name: "Makuri Islands" },
     10: { worldId: 10, name: "France" },
     11: { worldId: 11, name: "Paris" },
+    12: { worldId: 12, name: "Gravel Mountain" },
     13: { worldId: 13, name: "Scotland" }
+};
+
+// CourseId to WorldId mapping (from Sauce4Zwift)
+// IMPORTANT: courseId and worldId are different!
+export const COURSE_TO_WORLD_ID = {
+    6: 1,   // Watopia
+    2: 2,   // Richmond
+    7: 3,   // London
+    8: 4,   // New York (courseId 8 = worldId 4!)
+    9: 5,   // Innsbruck
+    10: 6,  // Bologna
+    11: 7,  // Yorkshire
+    12: 8,  // Crit City (courseId 12 = worldId 8!)
+    13: 9,  // Makuri Islands
+    14: 10, // France
+    15: 11, // Paris
+    16: 12, // Gravel Mountain
+    17: 13  // Scotland
 };
 
 /**
@@ -372,18 +392,24 @@ export function generateAutoCheckpoints(coordinates, telemetry, intervalMeters =
 }
 
 /**
- * Get world name from IDs with better error handling - FIXED
+ * Get world name from IDs with better error handling
+ * IMPORTANT: courseId and worldId are different in Zwift!
+ * courseId 8 = New York (worldId 4), NOT Crit City (worldId 8)
  */
 export function getWorldName(worldId, courseId) {
-    // Null safety checks
+    // If we have a worldId, use it directly
     if (worldId !== undefined && worldId !== null && WORLD_MAPPING[worldId]) {
         return WORLD_MAPPING[worldId].name;
     }
-    
-    if (courseId !== undefined && courseId !== null && WORLD_MAPPING[courseId]) {
-        return WORLD_MAPPING[courseId].name;
+
+    // If we have a courseId, convert it to worldId first
+    if (courseId !== undefined && courseId !== null) {
+        const mappedWorldId = COURSE_TO_WORLD_ID[courseId];
+        if (mappedWorldId && WORLD_MAPPING[mappedWorldId]) {
+            return WORLD_MAPPING[mappedWorldId].name;
+        }
     }
-    
+
     // Last resort
     return `Unknown World (ID: ${worldId || courseId || 'N/A'})`;
 }
