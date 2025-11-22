@@ -317,7 +317,8 @@ export function generateAutoCheckpoints(coordinates, telemetry, intervalMeters =
         distance: 0,
         altitude: (telemetry && telemetry.altitude && telemetry.altitude[0]) ? telemetry.altitude[0] / 100 : 0,
         index: 0,
-        type: 'start'
+        type: 'start',
+        time: 0  // Start time is always 0
     });
     
     // Add intermediate checkpoints based on distance
