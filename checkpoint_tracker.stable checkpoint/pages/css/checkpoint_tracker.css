@@ -586,26 +586,29 @@
 }
 
 /* Time label on checkpoint markers - positioned ABOVE the marker */
+/* Note: Inline styles in JS take precedence - this is fallback */
 .entities .entity.checkpoint-marker .checkpoint-time-label {
     display: block !important;
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.9);
-    color: #fff;
+    position: absolute !important;
+    top: -26px !important;
+    left: 50% !important;
+    margin-left: -25px !important;
+    width: 50px !important;
+    text-align: center !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    color: #fff !important;
     font-size: 11px !important;
-    font-family: monospace;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    white-space: nowrap;
+    font-family: monospace !important;
+    font-weight: 600 !important;
+    padding: 3px 6px !important;
+    border-radius: 4px !important;
+    white-space: nowrap !important;
     text-indent: 0 !important;
     line-height: normal !important;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-    z-index: 200;
-    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+    z-index: 200 !important;
+    pointer-events: none !important;
 }
 
 .entities .entity.checkpoint-marker::after {
